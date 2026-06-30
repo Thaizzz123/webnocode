@@ -1,0 +1,1394 @@
+<!DOCTYPE html>
+<html lang="vi" class="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PharmDoc — Tra cứu thuốc thông minh</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+tailwind.config = {
+  darkMode: 'class',
+  theme: {
+    extend: {
+      fontFamily: { sans: ['Be Vietnam Pro', 'Inter', 'sans-serif'] },
+      colors: {
+        teal: { 50:'#f0fdfa',100:'#ccfbf1',200:'#99f6e4',300:'#5eead4',400:'#2dd4bf',500:'#14b8a6',600:'#0d9488',700:'#0f766e',800:'#115e59',900:'#134e4a',950:'#042f2e' }
+      }
+    }
+  }
+}
+</script>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+  :root {--teal:#0d9488;--teal-l:#14b8a6;--bg-light:#f8fafc;--bg-dark:#0f172a;}
+  body{font-family:'Be Vietnam Pro',Inter,sans-serif;}
+  ::-webkit-scrollbar{width:5px;height:5px}
+  ::-webkit-scrollbar-track{background:transparent}
+  ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px}
+  .dark ::-webkit-scrollbar-thumb{background:#475569}
+  .badge-otc{background:#dcfce7;color:#166534;border:1px solid #bbf7d0;}
+  .dark .badge-otc{background:#14532d33;color:#4ade80;border-color:#166534;}
+  .badge-rx{background:#fef3c7;color:#92400e;border:1px solid #fde68a;}
+  .dark .badge-rx{background:#78350f33;color:#fbbf24;border-color:#92400e;}
+  .card-hover:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(13,148,136,.15);}
+  .card-hover{transition:all .2s;}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:translateY(0)}}
+  .fade-up{animation:fadeUp .3s ease forwards;}
+  .chip{cursor:pointer;padding:.25rem .75rem;border-radius:9999px;font-size:.75rem;font-weight:500;border:1px solid;transition:all .15s;white-space:nowrap;}
+  .chip-active{background:#0d9488!important;color:#fff!important;border-color:#0d9488!important;}
+  #page-search{display:none}
+  #detail-modal{display:none}
+  .nav-link{font-size:.875rem;font-weight:500;padding:.375rem .875rem;border-radius:.5rem;transition:all .15s;cursor:pointer;}
+  .nav-link:hover{background:rgba(13,148,136,.1);color:#0d9488;}
+  .filter-label{font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:#64748b;margin-bottom:.5rem;display:block;}
+  .dark .filter-label{color:#94a3b8}
+  .radio-item{display:flex;align-items:center;gap:.5rem;padding:.4rem .6rem;border-radius:.5rem;cursor:pointer;font-size:.8rem;transition:background .12s;}
+  .radio-item:hover{background:rgba(13,148,136,.08);}
+  .radio-item input{accent-color:#0d9488;}
+  input[type=search]::-webkit-search-cancel-button{display:none}
+</style>
+</head>
+<body class="bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
+
+<!-- ============================  DISCLAIMER MODAL  ============================ -->
+<div id="modal-disclaimer" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+  <div class="bg-white dark:bg-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl border border-rose-200 dark:border-rose-900/40">
+    <div class="flex items-center gap-3 text-rose-500 mb-4">
+      <i class="fa-solid fa-triangle-exclamation text-3xl"></i>
+      <h2 class="text-lg font-bold">CẢNH BÁO AN TOÀN Y TẾ</h2>
+    </div>
+    <div class="space-y-2.5 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+      <p class="font-semibold text-slate-800 dark:text-white">Vui lòng đọc kỹ trước khi sử dụng:</p>
+      <p>🔴 Nội dung mang tính chất <strong>tham khảo</strong>, không thay thế chẩn đoán y khoa.</p>
+      <p>🔴 AI <strong>không phải bác sĩ</strong> — luôn hỏi ý kiến chuyên gia trước khi dùng thuốc.</p>
+      <p>🔴 Khẩn cấp (khó thở, đau ngực, bất tỉnh): <strong>gọi ngay 115</strong>.</p>
+    </div>
+    <button id="btn-accept" class="mt-5 w-full bg-teal-600 hover:bg-teal-700 text-white font-semibold py-2.5 rounded-xl transition text-sm shadow">
+      Tôi đã hiểu và đồng ý →
+    </button>
+  </div>
+</div>
+
+<!-- ============================  TOAST  ============================ -->
+<div id="toast-area" class="fixed top-4 right-4 z-50 flex flex-col gap-2 pointer-events-none"></div>
+
+<!-- ============================  DRUG DETAIL MODAL  ============================ -->
+<div id="detail-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+  <div id="detail-box" class="bg-white dark:bg-slate-800 rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+    <div class="flex items-start justify-between p-5 border-b border-slate-200 dark:border-slate-700">
+      <div>
+        <div class="flex items-center gap-2 mb-1">
+          <span id="d-type-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full border"></span>
+          <span id="d-cat-badge" class="text-[11px] font-medium px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300"></span>
+        </div>
+        <h2 id="d-name" class="text-lg font-bold text-slate-900 dark:text-white leading-tight"></h2>
+        <p id="d-active" class="text-sm text-teal-600 dark:text-teal-400 mt-0.5 font-medium"></p>
+      </div>
+      <button onclick="closeDetail()" class="ml-2 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400 hover:text-slate-600 transition shrink-0">
+        <i class="fa-solid fa-xmark text-lg"></i>
+      </button>
+    </div>
+    <div class="p-5 space-y-4 max-h-[70vh] overflow-y-auto">
+      <div>
+        <div class="flex items-center gap-2 mb-2">
+          <i class="fa-solid fa-stethoscope text-teal-500 text-sm"></i>
+          <h3 class="font-bold text-sm text-slate-800 dark:text-white">Chỉ định</h3>
+        </div>
+        <p id="d-indication" class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed bg-teal-50 dark:bg-teal-950/20 p-3 rounded-xl border border-teal-100 dark:border-teal-900/30"></p>
+      </div>
+      <div>
+        <div class="flex items-center gap-2 mb-2">
+          <i class="fa-solid fa-circle-exclamation text-amber-500 text-sm"></i>
+          <h3 class="font-bold text-sm text-slate-800 dark:text-white">Cảnh báo quan trọng</h3>
+        </div>
+        <p id="d-warning" class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed bg-amber-50 dark:bg-amber-950/20 p-3 rounded-xl border border-amber-100 dark:border-amber-900/30"></p>
+      </div>
+    </div>
+    <div class="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+      <p class="text-[11px] text-slate-400 text-center">⚠ Thông tin chỉ mang tính tham khảo. Hỏi dược sĩ hoặc bác sĩ trước khi dùng.</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============================  HEADER  ============================ -->
+<header class="bg-white dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700 sticky top-0 z-40 transition-colors">
+  <div class="max-w-screen-xl mx-auto px-4 h-14 flex items-center justify-between gap-4">
+    <a onclick="showHome()" class="flex items-center gap-2.5 cursor-pointer select-none">
+      <div class="w-8 h-8 rounded-lg bg-teal-600 flex items-center justify-center shadow">
+        <i class="fa-solid fa-capsules text-white text-sm"></i>
+      </div>
+      <span class="font-extrabold text-base tracking-tight text-slate-900 dark:text-white">PharmDoc</span>
+      <span class="text-[11px] bg-teal-100 dark:bg-teal-900/40 text-teal-700 dark:text-teal-400 px-1.5 py-0.5 rounded font-bold hidden sm:block">Beta</span>
+    </a>
+    <nav class="flex items-center gap-1">
+      <span onclick="showSearch('lookup')" class="nav-link text-slate-600 dark:text-slate-400">Tra cứu</span>
+      <span onclick="showSearch('chat')" class="nav-link text-slate-600 dark:text-slate-400 hidden sm:block">Tư vấn AI</span>
+      <button id="btn-theme" onclick="toggleTheme()" class="ml-1 p-2 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-400 transition" title="Đổi theme">
+        <i class="fa-solid fa-moon dark:hidden"></i>
+        <i class="fa-solid fa-sun hidden dark:block"></i>
+      </button>
+    </nav>
+  </div>
+</header>
+
+<!-- ============================  PAGE: HOME  ============================ -->
+<main id="page-home">
+
+  <!-- Hero -->
+  <section class="max-w-screen-xl mx-auto px-4 pt-16 pb-12 text-center">
+    <div class="inline-flex items-center gap-2 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 text-xs font-semibold px-3 py-1.5 rounded-full border border-teal-200 dark:border-teal-800 mb-6">
+      <i class="fa-solid fa-database text-[10px]"></i> hơn 300 loại thuốc phổ biến · Cập nhật 2026
+    </div>
+    <h1 class="text-4xl sm:text-5xl font-extrabold leading-tight tracking-tight text-slate-900 dark:text-white mb-4">
+      Tra cứu thuốc<br>
+      <span class="text-teal-600 dark:text-teal-400">nhanh, đúng, an toàn.</span>
+    </h1>
+    <p class="text-base sm:text-lg text-slate-500 dark:text-slate-400 max-w-lg mx-auto mb-8 leading-relaxed">
+      Tập trung vào trải nghiệm tra cứu: xem nhanh tên, nhóm thuốc, OTC hay kê đơn, đọc chỉ định và cảnh báo.
+    </p>
+    <div class="flex flex-wrap gap-3 justify-center">
+      <button onclick="showSearch('lookup')" class="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-6 py-3 rounded-xl transition shadow-lg shadow-teal-600/20 flex items-center gap-2 text-sm">
+        <i class="fa-solid fa-magnifying-glass"></i> Bắt đầu tra cứu
+      </button>
+      <button onclick="showSearch('chat')" class="bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 font-semibold px-6 py-3 rounded-xl transition border border-slate-300 dark:border-slate-600 flex items-center gap-2 text-sm shadow-sm">
+        <i class="fa-solid fa-robot text-teal-500"></i> Tư vấn AI
+      </button>
+    </div>
+  </section>
+
+  <!-- Stats -->
+  <section class="max-w-screen-xl mx-auto px-4 pb-14">
+    <div class="grid grid-cols-3 gap-4 max-w-sm mx-auto">
+      <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 text-center shadow-sm">
+        <div class="text-2xl font-extrabold text-teal-600 dark:text-teal-400">300+</div>
+        <div class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Loại thuốc</div>
+      </div>
+      <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 text-center shadow-sm">
+        <div class="text-2xl font-extrabold text-teal-600 dark:text-teal-400">15</div>
+        <div class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Nhóm thuốc</div>
+      </div>
+      <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 text-center shadow-sm">
+        <div class="text-2xl font-extrabold text-teal-600 dark:text-teal-400">2</div>
+        <div class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Phân loại</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50">
+    <div class="max-w-screen-xl mx-auto px-4 py-14">
+      <p class="text-xs font-bold uppercase tracking-widest text-teal-600 dark:text-teal-400 mb-3 text-center">Tính năng</p>
+      <h2 class="text-2xl font-extrabold text-center text-slate-900 dark:text-white mb-10">Tìm thuốc theo nhu cầu</h2>
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+          <div class="w-10 h-10 bg-teal-100 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 rounded-xl flex items-center justify-center mb-3"><i class="fa-solid fa-magnifying-glass"></i></div>
+          <h3 class="font-bold text-sm text-slate-800 dark:text-white mb-1">Tìm theo tên</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">Nhập tên thuốc, hoạt chất hoặc triệu chứng</p>
+        </div>
+        <div class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+          <div class="w-10 h-10 bg-teal-100 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 rounded-xl flex items-center justify-center mb-3"><i class="fa-solid fa-filter"></i></div>
+          <h3 class="font-bold text-sm text-slate-800 dark:text-white mb-1">Lọc theo nhóm</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">Lọc theo 15 nhóm thuốc và OTC/Kê đơn</p>
+        </div>
+        <div class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+          <div class="w-10 h-10 bg-teal-100 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 rounded-xl flex items-center justify-center mb-3"><i class="fa-solid fa-robot"></i></div>
+          <h3 class="font-bold text-sm text-slate-800 dark:text-white mb-1">Tư vấn AI</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">Hỏi AI về triệu chứng và gợi ý thuốc phù hợp</p>
+        </div>
+        <div class="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-5">
+          <div class="w-10 h-10 bg-teal-100 dark:bg-teal-950/40 text-teal-600 dark:text-teal-400 rounded-xl flex items-center justify-center mb-3"><i class="fa-solid fa-map-location-dot"></i></div>
+          <h3 class="font-bold text-sm text-slate-800 dark:text-white mb-1">Tìm nhà thuốc</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">Định vị nhà thuốc GPP gần nhất xung quanh bạn</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Process -->
+  <section class="max-w-screen-xl mx-auto px-4 py-14">
+    <p class="text-xs font-bold uppercase tracking-widest text-teal-600 dark:text-teal-400 mb-3 text-center">Quy trình</p>
+    <h2 class="text-2xl font-extrabold text-center text-slate-900 dark:text-white mb-10">Từ triệu chứng đến thuốc phù hợp</h2>
+    <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div class="flex gap-4">
+        <span class="text-3xl font-extrabold text-teal-200 dark:text-teal-900 shrink-0 leading-none">01</span>
+        <div><p class="font-bold text-sm text-slate-800 dark:text-white mb-1">Chọn nhóm thuốc</p><p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">Hoặc nhập từ khóa tên thuốc, triệu chứng</p></div>
+      </div>
+      <div class="flex gap-4">
+        <span class="text-3xl font-extrabold text-teal-200 dark:text-teal-900 shrink-0 leading-none">02</span>
+        <div><p class="font-bold text-sm text-slate-800 dark:text-white mb-1">Lọc OTC hoặc kê đơn</p><p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">Biết ngay thuốc nào cần đơn bác sĩ</p></div>
+      </div>
+      <div class="flex gap-4">
+        <span class="text-3xl font-extrabold text-teal-200 dark:text-teal-900 shrink-0 leading-none">03</span>
+        <div><p class="font-bold text-sm text-slate-800 dark:text-white mb-1">Xem chi tiết</p><p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">Chỉ định, cảnh báo quan trọng cần biết</p></div>
+      </div>
+      <div class="flex gap-4">
+        <span class="text-3xl font-extrabold text-teal-200 dark:text-teal-900 shrink-0 leading-none">04</span>
+        <div><p class="font-bold text-sm text-slate-800 dark:text-white mb-1">Hỏi thêm AI</p><p class="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">Nếu còn thắc mắc, tư vấn AI hỗ trợ thêm</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Audience cards -->
+  <section class="border-t border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800/50">
+    <div class="max-w-screen-xl mx-auto px-4 py-14">
+      <div class="grid sm:grid-cols-3 gap-6">
+        <div class="border border-slate-200 dark:border-slate-700 rounded-2xl p-6 bg-slate-50 dark:bg-slate-800">
+          <i class="fa-solid fa-user text-teal-500 text-xl mb-3 block"></i>
+          <h3 class="font-bold text-slate-800 dark:text-white mb-2">Bệnh nhân</h3>
+          <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Xem ngay chỉ định và cảnh báo trước khi mua thuốc. Không cần đọc tờ hướng dẫn dài dòng.</p>
+        </div>
+        <div class="border border-slate-200 dark:border-slate-700 rounded-2xl p-6 bg-slate-50 dark:bg-slate-800">
+          <i class="fa-solid fa-user-nurse text-teal-500 text-xl mb-3 block"></i>
+          <h3 class="font-bold text-slate-800 dark:text-white mb-2">Người chăm sóc</h3>
+          <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Tra nhanh thông tin thuốc cho người thân, nhất là khi dùng nhiều loại cùng lúc.</p>
+        </div>
+        <div class="border border-slate-200 dark:border-slate-700 rounded-2xl p-6 bg-slate-50 dark:bg-slate-800">
+          <i class="fa-solid fa-graduation-cap text-teal-500 text-xl mb-3 block"></i>
+          <h3 class="font-bold text-slate-800 dark:text-white mb-2">Sinh viên Y Dược</h3>
+          <p class="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">Ôn tập nhanh danh mục thuốc phổ biến với phân loại nhóm và OTC/Rx rõ ràng.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CTA final -->
+  <section class="max-w-screen-xl mx-auto px-4 py-16 text-center">
+    <h2 class="text-2xl font-extrabold text-slate-900 dark:text-white mb-4">Sẵn sàng tra cứu</h2>
+    <p class="text-slate-500 dark:text-slate-400 text-sm mb-6">Xem ngay 10 thuốc ngẫu nhiên hoặc lọc theo nhóm bạn cần.</p>
+    <button onclick="showSearch('lookup')" class="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-8 py-3 rounded-xl transition shadow-lg shadow-teal-600/20 text-sm">
+      Mở kho thuốc →
+    </button>
+  </section>
+
+</main>
+
+<!-- ============================  PAGE: SEARCH  ============================ -->
+<div id="page-search" class="flex-1 flex flex-col max-w-screen-xl w-full mx-auto px-4 py-4 gap-4">
+
+  <!-- Page header -->
+  <div>
+    <h1 class="text-xl font-extrabold text-slate-900 dark:text-white">Tra cứu thuốc</h1>
+    <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Lọc theo nhóm, loại, hoặc tìm theo tên — nhấn vào thẻ để xem chi tiết.</p>
+  </div>
+
+  <div class="flex gap-4 flex-1 min-h-0">
+
+    <!-- Sidebar -->
+    <aside class="w-56 shrink-0 flex flex-col gap-3 hidden lg:flex">
+
+      <!-- Search input -->
+      <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3">
+        <div class="relative">
+          <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+          <input id="search-input" type="search" placeholder="Tên thuốc, hoạt chất..." autocomplete="off"
+            class="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-slate-900 dark:text-white transition">
+        </div>
+      </div>
+
+      <!-- Category filter -->
+      <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 flex-1 overflow-y-auto">
+        <span class="filter-label">Nhóm thuốc</span>
+        <div id="cat-filter" class="space-y-0.5">
+          <label class="radio-item"><input type="radio" name="cat" value="" checked> <span class="text-slate-700 dark:text-slate-300">Tất cả nhóm</span></label>
+        </div>
+        <div class="my-3 border-t border-slate-100 dark:border-slate-700"></div>
+        <span class="filter-label">Phân loại</span>
+        <div id="type-filter" class="space-y-0.5">
+          <label class="radio-item"><input type="radio" name="rtype" value="" checked> <span class="text-slate-700 dark:text-slate-300">Tất cả</span></label>
+          <label class="radio-item"><input type="radio" name="rtype" value="OTC"> <span class="badge-otc text-[11px] font-bold px-1.5 py-0.5 rounded">OTC</span> <span class="text-slate-600 dark:text-slate-400 text-xs">Không kê đơn</span></label>
+          <label class="radio-item"><input type="radio" name="rtype" value="Rx"> <span class="badge-rx text-[11px] font-bold px-1.5 py-0.5 rounded">Rx</span> <span class="text-slate-600 dark:text-slate-400 text-xs">Cần kê đơn</span></label>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- Main content -->
+    <section class="flex-1 flex flex-col bg-white dark:bg-slate-800 rounded-2xl border border-slate-200 dark:border-slate-700 overflow-hidden min-h-0">
+
+      <!-- Tabs -->
+      <div class="border-b border-slate-200 dark:border-slate-700 flex items-center gap-1 px-3 pt-2 pb-0 shrink-0 overflow-x-auto">
+        <button id="tab-lookup" onclick="switchTab('lookup')" class="flex items-center gap-2 px-4 py-2.5 rounded-t-lg font-semibold text-xs border-b-2 border-teal-500 text-teal-600 dark:text-teal-400 whitespace-nowrap transition">
+          <i class="fa-solid fa-capsules"></i> Tra cứu thuốc
+        </button>
+        <button id="tab-chat" onclick="switchTab('chat')" class="flex items-center gap-2 px-4 py-2.5 rounded-t-lg font-semibold text-xs border-b-2 border-transparent text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 whitespace-nowrap transition">
+          <i class="fa-solid fa-robot"></i> Tư vấn AI
+        </button>
+        <button id="tab-pharmacy" onclick="switchTab('pharmacy')" class="flex items-center gap-2 px-4 py-2.5 rounded-t-lg font-semibold text-xs border-b-2 border-transparent text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400 whitespace-nowrap transition">
+          <i class="fa-solid fa-map-location-dot"></i> Nhà thuốc gần đây
+        </button>
+      </div>
+
+      <!-- View: Lookup -->
+      <div id="view-lookup" class="flex flex-col flex-1 overflow-hidden">
+
+        <!-- Mobile search bar -->
+        <div class="p-3 border-b border-slate-100 dark:border-slate-700 lg:hidden shrink-0">
+          <div class="relative">
+            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+            <input id="search-input-mobile" type="search" placeholder="Nhập tên thuốc, hoạt chất..." autocomplete="off"
+              class="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-slate-900 dark:text-white transition">
+          </div>
+        </div>
+
+        <!-- Quick chips -->
+        <div id="chips-area" class="px-4 pt-3 pb-2 flex gap-2 overflow-x-auto shrink-0">
+          <button class="chip border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:border-teal-500 hover:text-teal-600" onclick="quickSearch(this,'đau đầu')">💊 Đau đầu</button>
+          <button class="chip border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:border-teal-500 hover:text-teal-600" onclick="quickSearch(this,'sốt')">🌡 Sốt</button>
+          <button class="chip border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:border-teal-500 hover:text-teal-600" onclick="quickSearch(this,'ho')">😮‍💨 Ho</button>
+          <button class="chip border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:border-teal-500 hover:text-teal-600" onclick="quickSearch(this,'tiêu chảy')">🤢 Tiêu chảy</button>
+          <button class="chip border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:border-teal-500 hover:text-teal-600" onclick="quickSearch(this,'dị ứng')">🤧 Dị ứng</button>
+          <button class="chip border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:border-teal-500 hover:text-teal-600" onclick="quickSearch(this,'đau khớp')">🦴 Đau khớp</button>
+          <button class="chip border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:border-teal-500 hover:text-teal-600" onclick="quickSearch(this,'cao huyết áp')">❤ Huyết áp</button>
+          <button class="chip border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:border-teal-500 hover:text-teal-600" onclick="quickSearch(this,'mất ngủ')">😴 Mất ngủ</button>
+          <button class="chip border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:border-teal-500 hover:text-teal-600" onclick="quickSearch(this,'tiểu đường')">🩸 Tiểu đường</button>
+          <button class="chip border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-400 hover:border-teal-500 hover:text-teal-600" onclick="quickSearch(this,'')"><i class="fa-solid fa-rotate-right text-[10px] mr-1"></i>Tất cả</button>
+        </div>
+
+        <div id="result-info" class="px-4 pb-1 text-[11px] text-slate-400 shrink-0"></div>
+
+        <!-- Results grid -->
+        <div id="results-grid" class="flex-1 overflow-y-auto p-4 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3 content-start">
+          <!-- cards rendered by JS -->
+        </div>
+      </div>
+
+      <!-- View: Chat -->
+      <div id="view-chat" class="hidden flex-col flex-1 overflow-hidden">
+        <div class="px-4 py-2 bg-slate-50 dark:bg-slate-700/40 border-b border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400 flex items-center gap-1.5 shrink-0">
+          <i class="fa-solid fa-robot text-teal-500"></i> AI tư vấn sức khỏe sơ bộ — không thay thế ý kiến bác sĩ
+        </div>
+        <div id="chat-feed" class="flex-1 p-4 overflow-y-auto space-y-4">
+          <div class="flex gap-3 max-w-[88%]">
+            <div class="w-8 h-8 rounded-full bg-teal-600 text-white flex items-center justify-center text-sm shrink-0 shadow"><i class="fa-solid fa-robot text-xs"></i></div>
+            <div>
+              <div class="bg-slate-100 dark:bg-slate-700 p-3.5 rounded-2xl rounded-tl-none text-sm leading-relaxed">
+                Xin chào! Mình là trợ lý y tế cá nhân của bạn, hãy mô tả triệu chứng bạn đang gặp (tối đa 5 triệu chứng/lần), mình sẽ gợi ý loại thuốc phù hợp nhất.
+              </div>
+              <span class="text-[10px] text-slate-400 px-1 mt-1 block">PharmDoc AI</span>
+            </div>
+          </div>
+        </div>
+        <div id="chat-typing" class="hidden px-4 py-2 flex items-center gap-2 text-xs text-slate-400 italic shrink-0">
+          <i class="fa-solid fa-circle-notch animate-spin text-teal-500"></i> AI đang soạn phản hồi...
+        </div>
+        <div class="p-3 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex gap-2 shrink-0">
+          <input id="chat-input" type="text" autocomplete="off" placeholder="Ví dụ: Tôi bị đau đầu, sốt nhẹ, cần uống thuốc gì?"
+            class="flex-1 bg-white dark:bg-slate-700 px-4 py-2.5 rounded-xl text-sm border border-slate-200 dark:border-slate-600 focus:outline-none focus:ring-2 focus:ring-teal-500 text-slate-900 dark:text-white transition">
+          <button id="chat-send" class="bg-teal-600 hover:bg-teal-700 text-white p-2.5 rounded-xl transition shadow-lg w-11 h-11 flex items-center justify-center shrink-0">
+            <i class="fa-solid fa-paper-plane text-sm"></i>
+          </button>
+        </div>
+        <div class="px-4 pb-3 text-[10px] text-slate-400 text-center shrink-0">
+          ⚠ Gợi ý được tổng hợp tự động từ dữ liệu tủ thuốc nội bộ, chỉ mang tính tham khảo — không thay thế chẩn đoán của bác sĩ/dược sĩ.
+        </div>
+      </div>
+
+      <!-- View: Pharmacy -->
+      <div id="view-pharmacy" class="hidden flex-col flex-1 overflow-hidden">
+        <div class="flex-1 flex flex-col items-center justify-center text-center p-6 gap-4">
+          <i class="fa-solid fa-map-location-dot text-5xl text-teal-500 opacity-70"></i>
+          <div>
+            <h3 class="font-bold text-slate-800 dark:text-white mb-1">Tìm nhà thuốc gần đây</h3>
+            <p class="text-xs text-slate-500 dark:text-slate-400 max-w-xs mx-auto leading-relaxed">Nhấn nút bên dưới để tìm các nhà thuốc xung quanh vị trí hiện tại của bạn.</p>
+          </div>
+          <a id="btn-gps" href="https://www.google.com/maps/search/?api=1&query=nh%C3%A0+thu%E1%BB%91c+g%E1%BA%A7n+%C4%91%C3%A2y" target="_blank" rel="noopener"
+            class="bg-teal-600 hover:bg-teal-700 text-white font-semibold px-6 py-3 rounded-xl text-sm flex items-center gap-2 transition shadow-lg shadow-teal-600/20">
+            <i class="fa-solid fa-location-crosshairs"></i> Nhà thuốc gần đây
+          </a>
+        </div>
+      </div>
+
+    </section>
+  </div>
+</div>
+
+<!-- ============================  FOOTER  ============================ -->
+<footer class="bg-white dark:bg-slate-800 border-t border-slate-200 dark:border-slate-700 text-[11px] text-slate-400 text-center py-2 shrink-0">
+  &copy; 2026 PharmDoc &mdash; Tra cứu thuốc thông minh
+</footer>
+
+<script>
+// ================================================================
+//  CONFIG
+// ================================================================
+const APP_CONFIG = {
+  disclaimerKey: 'pharmdoc_disclaimer',
+  themeKey: 'pharmdoc_theme',
+  MAX_SYMPTOMS: 5,
+  EMERGENCY_KEYWORDS: ['khó thở','đau ngực','bất tỉnh','ngã xuống','nhồi máu','đột quỵ','co giật','mất ý thức','cấp cứu']
+};
+
+// ================================================================
+//  MEDICINE DATA (300 loại thuốc)
+// ================================================================
+const MEDICINES = [
+  // --- Giảm đau & Hạ sốt ---
+  {id:1,name:"Hapacol 250 / 500",active:"Paracetamol",type:"OTC",cat:"Giảm đau & Hạ sốt",form:"Viên uống",indication:"Hạ sốt, giảm đau nhẹ đến vừa (đau đầu, đau răng, đau cơ).",warning:"Không uống quá 4g/ngày, cách nhau ít nhất 4–6 tiếng. Tránh dùng chung với thuốc khác chứa Paracetamol để ngừa ngộ độc gan cấp tính.",tags:["đau đầu","sốt","đau răng","đau cơ","hạ sốt"]},
+  {id:2,name:"Panadol Extra",active:"Paracetamol + Caffeine",type:"OTC",cat:"Giảm đau & Hạ sốt",form:"Viên uống",indication:"Giảm đau từ nhẹ đến vừa: đau đầu, đau nửa đầu, đau răng, đau cơ.",warning:"Không dùng cho trẻ dưới 12 tuổi. Hạn chế dùng chung với trà, cà phê để tránh mất ngủ, tim đập nhanh.",tags:["đau đầu","đau nửa đầu","đau răng"]},
+  {id:3,name:"Efferalgan 500mg",active:"Paracetamol (viên sủi)",type:"OTC",cat:"Giảm đau & Hạ sốt",form:"Viên sủi",indication:"Hạ sốt, giảm đau xương khớp, đau đầu, đau răng tác dụng nhanh.",warning:"Hòa tan hoàn toàn viên trong nước trước khi uống. Thận trọng người ăn kiêng muối (natri cao).",tags:["sốt","đau đầu","đau răng","đau xương khớp"]},
+  {id:4,name:"Alaxan",active:"Paracetamol + Ibuprofen",type:"OTC",cat:"Giảm đau & Hạ sốt",form:"Viên uống",indication:"Giảm đau cơ xương trung bình đến nặng, đau khớp, đau lưng, đau sau chấn thương.",warning:"Bắt buộc uống sau ăn no. Không dùng cho người loét dạ dày, suy gan hoặc suy thận nặng.",tags:["đau cơ","đau khớp","đau lưng","chấn thương"]},
+  {id:5,name:"Mobic 7.5mg / 15mg",active:"Meloxicam",type:"Rx",cat:"Giảm đau & Hạ sốt",form:"Viên uống",indication:"Điều trị dài hạn viêm xương khớp, thoái hóa khớp, viêm cột sống dính khớp.",warning:"Nguy cơ xuất huyết tiêu hóa cao. Không tự ý tăng liều hoặc phối hợp với NSAID khác.",tags:["viêm khớp","thoái hóa khớp","đau khớp"]},
+  {id:6,name:"Voltaren Emulgel",active:"Diclofenac",type:"OTC",cat:"Giảm đau & Hạ sốt",form:"Gel bôi",indication:"Gel bôi ngoài da giảm đau, kháng viêm do chấn thương gân, dây chằng, cơ và khớp.",warning:"Chỉ bôi ngoài da. Không bôi vết thương hở, mắt, niêm mạc. Không băng kín sau bôi.",tags:["đau cơ","chấn thương","đau khớp","gel bôi"]},
+  {id:7,name:"Celebrex 200mg",active:"Celecoxib",type:"Rx",cat:"Giảm đau & Hạ sốt",form:"Viên uống",indication:"Giảm đau, kháng viêm trong viêm khớp dạng thấp và thoái hóa khớp.",warning:"Thận trọng người có tiền sử tim mạch (tăng nguy cơ huyết khối, đột quỵ). Uống sau ăn.",tags:["viêm khớp","đau khớp"]},
+  {id:8,name:"Medrol 4mg / 16mg",active:"Methylprednisolone",type:"Rx",cat:"Giảm đau & Hạ sốt",form:"Viên uống",indication:"Kháng viêm, ức chế miễn dịch trong viêm khớp, hen phế quản, dị ứng nặng, bệnh tự miễn.",warning:"Uống sáng sau ăn. Không tự ý ngưng đột ngột — nguy cơ suy tuyến thượng thận cấp.",tags:["viêm khớp","dị ứng nặng","hen","corticoid"]},
+  {id:9,name:"Alpha Choay",active:"Alphachymotrypsin",type:"OTC",cat:"Giảm đau & Hạ sốt",form:"Viên uống",indication:"Kháng viêm, chống phù nề sau chấn thương, phẫu thuật hoặc viêm họng cấp.",warning:"Ngậm dưới lưỡi hoặc uống với nhiều nước. Thận trọng người rối loạn đông máu.",tags:["sưng phù","viêm họng","chấn thương","sau phẫu thuật"]},
+  {id:10,name:"Gufen 400mg",active:"Ibuprofen",type:"OTC",cat:"Giảm đau & Hạ sốt",form:"Viên uống",indication:"Giảm đau đầu, đau răng, đau bụng kinh, hạ sốt và kháng viêm khớp nhẹ.",warning:"Uống sau ăn no. Chống chỉ định người loét dạ dày, suy thận hoặc sốt xuất huyết.",tags:["đau đầu","đau răng","đau bụng kinh","sốt"]},
+  {id:11,name:"Naproxen 250mg",active:"Naproxen",type:"OTC",cat:"Giảm đau & Hạ sốt",form:"Viên uống",indication:"Giảm đau, kháng viêm trong viêm khớp, gút cấp, đau nửa đầu, đau cơ xương.",warning:"Gây kích ứng dạ dày cao, uống với ly nước đầy sau ăn. Thận trọng bệnh tim mạch.",tags:["đau khớp","gút","đau nửa đầu"]},
+  {id:12,name:"Felden 20mg",active:"Piroxicam",type:"Rx",cat:"Giảm đau & Hạ sốt",form:"Viên uống",indication:"Chống viêm, giảm đau trong viêm khớp dạng thấp, thoái hóa khớp, viêm cột sống.",warning:"Nguy cơ loét và xuất huyết dạ dày cao nhất trong nhóm NSAID cũ. Cần dùng kèm thuốc bọc dạ dày.",tags:["viêm khớp","thoái hóa khớp"]},
+  {id:13,name:"Voltaren viên 50mg",active:"Diclofenac uống",type:"Rx",cat:"Giảm đau & Hạ sốt",form:"Viên uống",indication:"Kháng viêm, giảm đau cấp tính nặng do viêm khớp, chấn thương, đau sau phẫu thuật.",warning:"Không dùng người suy tim ứ huyết, loét dạ dày. Uống sau ăn no.",tags:["viêm khớp","đau sau phẫu thuật","chấn thương"]},
+  {id:14,name:"Ultracet",active:"Tramadol + Paracetamol",type:"Rx",cat:"Giảm đau & Hạ sốt",form:"Viên uống",indication:"Điều trị đau trung bình đến nặng (đau sau phẫu thuật, đau xương khớp nặng).",warning:"Có thể gây chóng mặt, buồn nôn. Không dùng chung thuốc chống trầm cảm (hội chứng serotonin).",tags:["đau nặng","sau phẫu thuật"]},
+  {id:15,name:"Efferalgan Codeine",active:"Paracetamol + Codeine",type:"Rx",cat:"Giảm đau & Hạ sốt",form:"Viên uống",indication:"Giảm đau trung bình đến nặng không đáp ứng paracetamol đơn thuần.",warning:"Chứa Codeine gây nghiện và ức chế hô hấp. Không dùng trẻ dưới 12 tuổi, người suy hô hấp.",tags:["đau nặng"]},
+  {id:16,name:"Myonal 50mg",active:"Eperisone",type:"Rx",cat:"Giảm đau & Hạ sốt",form:"Viên uống",indication:"Thuốc giãn cơ điều trị co cứng cơ trong thoái hóa cột sống, đau lưng, thoát vị đĩa đệm.",warning:"Gây buồn ngủ, yếu cơ nhẹ. Thận trọng lái xe. Uống sau ăn.",tags:["đau lưng","co cơ","thoát vị đĩa đệm","thoái hóa cột sống"]},
+  {id:17,name:"Decontractyl 500mg",active:"Mephenesin",type:"Rx",cat:"Giảm đau & Hạ sốt",form:"Viên uống",indication:"Co thắt cơ gây đau trong thoái hóa cột sống hoặc rối loạn tư thế.",warning:"Có thể gây buồn ngủ, mất phối hợp nhẹ. Không dùng người rối loạn chuyển hóa porphyrin.",tags:["đau lưng","co cơ","cột sống"]},
+
+  // --- Hô hấp & Ho - cảm ---
+  {id:18,name:"Siro Ho Prospan",active:"Chiết xuất lá thường xuân",type:"OTC",cat:"Hô hấp & Ho - cảm",form:"Siro",indication:"Siro thảo dược long đờm, giãn phế quản, giảm ho — dùng được cho trẻ sơ sinh và người lớn.",warning:"Xem hạn dùng sau mở nắp (thường 3 tháng). Đi khám nếu ho kéo dài trên 7 ngày kèm sốt cao.",tags:["ho","đờm","viêm phế quản","trẻ em"]},
+  {id:19,name:"Acemuc 200mg",active:"Acetylcysteine",type:"OTC",cat:"Hô hấp & Ho - cảm",form:"Viên uống",indication:"Thuốc tiêu nhầy, long đờm trong viêm phế quản cấp và mạn tính.",warning:"Không dùng người tiền sử hen phế quản (co thắt phế quản). Uống nhiều nước để tăng hiệu quả.",tags:["ho","đờm","viêm phế quản"]},
+  {id:20,name:"Eugica Xanh / Đỏ",active:"Tinh dầu tràm, bạc hà, gừng",type:"OTC",cat:"Hô hấp & Ho - cảm",form:"Viên nang",indication:"Thảo dược trị ho, đau họng, sổ mũi, cảm cúm.",warning:"Không dùng trẻ dưới 3 tuổi hoặc trẻ tiền sử co giật do tinh dầu bạc hà, long não.",tags:["ho","đau họng","cảm cúm","sổ mũi"]},
+  {id:21,name:"Otrivin 0.05% / 0.1%",active:"Xylometazoline",type:"OTC",cat:"Hô hấp & Ho - cảm",form:"Nhỏ/xịt mũi",indication:"Co mạch, giảm nghẹt mũi, viêm mũi, viêm xoang nhanh chóng.",warning:"Không dùng quá 3–5 ngày liên tiếp. Lạm dụng gây lờn thuốc và nghẹt mũi nặng hơn.",tags:["nghẹt mũi","viêm mũi","viêm xoang"]},
+  {id:22,name:"Coldi-B",active:"Oxymetazoline",type:"OTC",cat:"Hô hấp & Ho - cảm",form:"Xịt mũi",indication:"Xịt mũi giảm nghẹt mũi, sổ mũi do cảm lạnh, viêm mũi dị ứng, viêm xoang.",warning:"Không dùng trẻ dưới 6 tuổi. Không dùng quá 7 ngày liên tục.",tags:["nghẹt mũi","sổ mũi","viêm xoang"]},
+  {id:23,name:"Terpin Codein",active:"Terpin + Codeine",type:"Rx",cat:"Hô hấp & Ho - cảm",form:"Viên uống",indication:"Giảm ho khan, ho do kích ứng đường hô hấp ở người lớn.",warning:"Gây buồn ngủ mạnh, táo bón. Không dùng trẻ dưới 12 tuổi, phụ nữ có thai/cho con bú, suy hô hấp.",tags:["ho khan"]},
+  {id:24,name:"Singulair 4/5/10mg",active:"Montelukast",type:"Rx",cat:"Hô hấp & Ho - cảm",form:"Viên uống",indication:"Dự phòng và điều trị hen phế quản mạn tính, viêm mũi dị ứng.",warning:"Uống đều mỗi tối kể cả khi không có cơn hen. Theo dõi thay đổi tâm thần (lo âu, trầm cảm).",tags:["hen phế quản","viêm mũi dị ứng"]},
+  {id:25,name:"Ventolin Evohaler",active:"Salbutamol",type:"Rx",cat:"Hô hấp & Ho - cảm",form:"Xịt họng",indication:"Thuốc xịt cắt cơn hen cấp tính, giãn phế quản trong hen hoặc COPD.",warning:"Luôn mang theo người. Súc miệng sau xịt. Nhịp tim có thể tăng nhanh.",tags:["hen","COPD","khó thở"]},
+  {id:26,name:"Seretide Evohaler",active:"Salmeterol + Fluticasone",type:"Rx",cat:"Hô hấp & Ho - cảm",form:"Xịt họng",indication:"Kiểm soát dài hạn hen phế quản và COPD.",warning:"Thuốc ngừa cơn, không dùng cắt cơn cấp. Bắt buộc súc miệng kỹ sau xịt để tránh nấm họng.",tags:["hen","COPD"]},
+  {id:27,name:"Decolgen Forte",active:"Paracetamol + Phenylephrine + Chlorpheniramine",type:"OTC",cat:"Hô hấp & Ho - cảm",form:"Viên uống",indication:"Điều trị triệu chứng cảm cúm, sốt, nhức đầu, sổ mũi, nghẹt mũi, hắt hơi.",warning:"Gây buồn ngủ mạnh. Không uống rượu, không dùng chung thuốc khác có paracetamol.",tags:["cảm cúm","sốt","nhức đầu","nghẹt mũi"]},
+  {id:28,name:"Tiffy Dey",active:"Paracetamol + Phenylephrine + Chlorpheniramine",type:"OTC",cat:"Hô hấp & Ho - cảm",form:"Viên uống",indication:"Giảm nghẹt mũi, sổ mũi, nhức đầu và sốt do cảm lạnh, cảm cúm.",warning:"Gây buồn ngủ sâu. Cấm dùng người tăng huyết áp nặng, mạch vành, cường giáp.",tags:["cảm cúm","nghẹt mũi","sốt","nhức đầu"]},
+  {id:29,name:"Ameflu Ban đêm",active:"Paracetamol + Chlorpheniramine + Dextromethorphan",type:"OTC",cat:"Hô hấp & Ho - cảm",form:"Viên uống",indication:"Giảm triệu chứng cảm cúm kèm ho khan và sổ mũi nặng về đêm.",warning:"Không dùng quá 7 ngày. Dextromethorphan chống chỉ định người hen suyễn, suy hô hấp.",tags:["cảm cúm","ho","sổ mũi"]},
+  {id:30,name:"Strepsils",active:"Amylmetacresol + Dichlorobenzyl alcohol",type:"OTC",cat:"Hô hấp & Ho - cảm",form:"Viên ngậm",indication:"Viên ngậm kháng khuẩn giảm đau họng, rát họng, khó nuốt.",warning:"Chỉ là thuốc triệu chứng, không thay thế kháng sinh nếu viêm họng do nhiễm khuẩn. Max 12 viên/ngày.",tags:["đau họng","viêm họng","rát họng"]},
+  {id:31,name:"Bisolvon 8mg",active:"Bromhexine",type:"OTC",cat:"Hô hấp & Ho - cảm",form:"Viên uống",indication:"Long đờm, tiêu nhầy trong viêm phế quản phổi cấp và mạn tính có đờm đặc.",warning:"Thận trọng người tiền sử loét dạ dày (thuốc phá hàng rào niêm mạc dạ dày).",tags:["ho","đờm","viêm phế quản"]},
+  {id:32,name:"Mucosolvan 30mg",active:"Ambroxol",type:"OTC",cat:"Hô hấp & Ho - cảm",form:"Viên uống",indication:"Làm tiêu chất nhầy đường hô hấp trong viêm phế quản, hen phế quản có đờm quánh.",warning:"Uống sau ăn no. Không phối hợp với thuốc ho khan (gây ứ đọng đờm).",tags:["ho","đờm","viêm phế quản"]},
+  {id:33,name:"Dextromethorphan 15mg",active:"Dextromethorphan",type:"OTC",cat:"Hô hấp & Ho - cảm",form:"Viên uống",indication:"Giảm ho khan, ho do kích ứng đường hô hấp nhẹ.",warning:"Không dùng cho ho có đờm, hen suyễn, suy hô hấp. Gây buồn ngủ nhẹ khi dùng liều cao.",tags:["ho khan"]},
+  {id:34,name:"Rhinathiol",active:"Carbocisteine",type:"OTC",cat:"Hô hấp & Ho - cảm",form:"Siro / Viên uống",indication:"Thuốc loãng đờm trong các đợt viêm đường hô hấp cấp.",warning:"Tránh dùng người loét dạ dày tiến triển. Không phối hợp với thuốc làm khô đờm.",tags:["ho","đờm"]},
+  {id:35,name:"Symbicort Turbuhaler",active:"Budesonide + Formoterol",type:"Rx",cat:"Hô hấp & Ho - cảm",form:"Xịt họng",indication:"Kiểm soát, dự phòng và cắt cơn hen phế quản hoặc COPD nặng.",warning:"Cần học đúng kỹ thuật hít. Bắt buộc súc miệng sau hít để ngừa nấm candida miệng.",tags:["hen","COPD","khó thở"]},
+  {id:36,name:"Flixotide Evohaler",active:"Fluticasone",type:"Rx",cat:"Hô hấp & Ho - cảm",form:"Xịt họng",indication:"Dự phòng hen phế quản nhẹ, trung bình đến nặng (corticoid dạng hít).",warning:"Thuốc ngừa cơn hàng ngày, không cắt cơn cấp. Súc miệng sạch sau xịt.",tags:["hen"]},
+  {id:37,name:"Naphazoline 0.05% nhỏ mũi",active:"Naphazoline",type:"OTC",cat:"Hô hấp & Ho - cảm",form:"Nhỏ mũi",indication:"Giảm nghẹt mũi, sổ mũi, xung huyết niêm mạc mũi do cảm lạnh.",warning:"Tránh trẻ dưới 6 tuổi (ức chế thần kinh trung ương). Không dùng quá 3–5 ngày.",tags:["nghẹt mũi","sổ mũi"]},
+  {id:38,name:"Xisat xịt mũi",active:"Nước muối biển sâu",type:"OTC",cat:"Hô hấp & Ho - cảm",form:"Xịt mũi",indication:"Vệ sinh mũi hàng ngày, kháng khuẩn, làm sạch rỉ mũi.",warning:"Lau sạch vòi xịt sau dùng. Không dùng chung chai giữa các thành viên.",tags:["nghẹt mũi","vệ sinh mũi"]},
+  {id:39,name:"Kamillosan xịt họng",active:"Chiết xuất hoa cúc",type:"OTC",cat:"Hô hấp & Ho - cảm",form:"Xịt họng",indication:"Thảo dược giảm viêm nướu, viêm họng, đau rát họng khi chớm cảm.",warning:"Xem hạn dùng sau mở nắp. Không xịt trực tiếp vào mũi.",tags:["đau họng","viêm họng"]},
+
+  // --- Dị ứng & Kháng histamin ---
+  {id:40,name:"Zyrtec / Cezil 10mg",active:"Cetirizine",type:"OTC",cat:"Dị ứng & Kháng histamin",form:"Viên uống",indication:"Điều trị viêm mũi dị ứng quanh năm, mề đay vô căn mạn tính.",warning:"Có thể gây buồn ngủ nhẹ. Tránh uống rượu bia hoặc thuốc ức chế thần kinh trung ương.",tags:["dị ứng","mề đay","viêm mũi dị ứng"]},
+  {id:41,name:"Telfast 60/120/180mg",active:"Fexofenadine",type:"OTC",cat:"Dị ứng & Kháng histamin",form:"Viên uống",indication:"Giảm triệu chứng viêm mũi dị ứng, mề đay mẩn ngứa.",warning:"Không uống chung nước hoa quả (bưởi, cam, táo) vì làm giảm hấp thu thuốc.",tags:["dị ứng","mề đay","viêm mũi dị ứng"]},
+  {id:42,name:"Clarityne 10mg",active:"Loratadine",type:"OTC",cat:"Dị ứng & Kháng histamin",form:"Viên uống",indication:"Giảm nhanh triệu chứng dị ứng, viêm mũi dị ứng, ngứa, mề đay.",warning:"Thận trọng người suy gan, suy thận nặng. Rất ít gây buồn ngủ.",tags:["dị ứng","mề đay","viêm mũi dị ứng"]},
+  {id:43,name:"Aerius 5mg",active:"Desloratadine",type:"OTC",cat:"Dị ứng & Kháng histamin",form:"Viên uống",indication:"Giảm triệu chứng viêm mũi dị ứng và mề đay, ngứa dị ứng da.",warning:"Thuốc thế hệ mới, rất ít gây buồn ngủ. Uống ngày 1 lần.",tags:["dị ứng","mề đay","viêm mũi dị ứng"]},
+  {id:44,name:"Xyzal 5mg",active:"Levocetirizine",type:"OTC",cat:"Dị ứng & Kháng histamin",form:"Viên uống",indication:"Điều trị viêm mũi dị ứng dai dẳng và mề đay mạn tính.",warning:"Ít buồn ngủ hơn thế hệ cũ nhưng vẫn thận trọng khi lái xe. Không uống rượu bia.",tags:["dị ứng","mề đay","viêm mũi dị ứng"]},
+  {id:45,name:"Phenergan kem bôi 2%",active:"Promethazine",type:"OTC",cat:"Dị ứng & Kháng histamin",form:"Kem bôi",indication:"Bôi tại chỗ trị ngứa da, sẩn ngứa, côn trùng cắn, bỏng bề mặt nhẹ.",warning:"Tránh bôi vết thương hở. Vùng bôi nhạy cảm với ánh sáng — cần che chắn kỹ.",tags:["ngứa da","côn trùng cắn","dị ứng da"]},
+
+  // --- Tiêu hóa & Dạ dày ---
+  {id:46,name:"Nexium Mups 20/40mg",active:"Esomeprazole",type:"Rx",cat:"Tiêu hóa & Dạ dày",form:"Viên uống",indication:"Điều trị viêm loét dạ dày–tá tràng, trào ngược dạ dày (GERD), diệt vi khuẩn HP.",warning:"Uống trước ăn sáng 30–60 phút. Nuốt nguyên viên, không nhai. Dùng dài có thể giảm hấp thu Canxi và B12.",tags:["loét dạ dày","trào ngược","GERD","HP"]},
+  {id:47,name:"Phosphalugel",active:"Aluminium phosphate gel",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Hỗn dịch uống",indication:"Kháng acid dịch vị, giảm đau rát thượng vị do viêm loét dạ dày hoặc trào ngược.",warning:"Uống khi đau hoặc sau ăn 1–2 tiếng. Dùng dài gây táo bón. Cách thuốc khác ít nhất 2 tiếng.",tags:["đau dạ dày","ợ chua","trào ngược"]},
+  {id:48,name:"Gaviscon / Gaviscon Dual",active:"Sodium alginate",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Hỗn dịch uống",indication:"Giảm nhanh ợ nóng, ợ chua và trào ngược acid sau ăn hoặc khi mang thai.",warning:"Uống sau bữa ăn và trước ngủ. Lắc kỹ hỗn dịch. Thận trọng người bệnh thận, suy tim (Natri cao).",tags:["ợ chua","ợ nóng","trào ngược"]},
+  {id:49,name:"Smecta",active:"Diosmectite",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Gói bột",indication:"Điều trị tiêu chảy cấp và mạn tính ở trẻ em và người lớn.",warning:"Pha với nước và uống ngay. Uống cách thuốc khác 1–2 tiếng (hấp phụ làm giảm hấp thu thuốc).",tags:["tiêu chảy","đau bụng"]},
+  {id:50,name:"Hidrasec",active:"Racecadotril",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Viên uống / Gói",indication:"Điều trị bổ sung tiêu chảy cấp, phối hợp cùng bù nước.",warning:"Không thay thế liệu pháp bù nước (Oresol). Không dùng quá 7 ngày.",tags:["tiêu chảy"]},
+  {id:51,name:"Oresol (ORS)",active:"Muối bù điện giải",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Gói bột",indication:"Bù nước và điện giải bị mất do tiêu chảy, nôn mửa, sốt cao.",warning:"Pha đúng lượng nước theo hướng dẫn. Không pha loãng hay đặc hơn — gây rối loạn điện giải. Dùng trong 24h sau pha.",tags:["tiêu chảy","mất nước","nôn"]},
+  {id:52,name:"Motilium-M",active:"Domperidone",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Viên uống",indication:"Điều trị buồn nôn, nôn, đầy bụng, khó tiêu do chậm làm rỗng dạ dày.",warning:"Chỉ dùng liều thấp nhất trong thời gian ngắn (không quá 1 tuần). Không dùng người bệnh tim mạch.",tags:["buồn nôn","nôn","đầy bụng","khó tiêu"]},
+  {id:53,name:"Berberin",active:"Berberine",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Viên uống",indication:"Điều trị lỵ, viêm ruột, tiêu chảy do nhiễm khuẩn đường ruột.",warning:"Chống chỉ định tuyệt đối phụ nữ mang thai (kích thích tử cung gây sảy thai) và trẻ sơ sinh.",tags:["tiêu chảy","viêm ruột","lỵ"]},
+  {id:54,name:"Enterogermina",active:"Bào tử Bacillus clausii",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Ống uống",indication:"Điều trị và phòng ngừa rối loạn hệ vi sinh đường ruột do dùng kháng sinh.",warning:"Dạng ống bẻ uống trực tiếp. Đang dùng kháng sinh: uống Enterogermina xen kẽ cách nhau 2 tiếng.",tags:["tiêu chảy","vi sinh đường ruột","sau kháng sinh"]},
+  {id:55,name:"Duphalac 10g",active:"Lactulose",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Gói",indication:"Điều trị táo bón mạn tính, điều hòa nhu động ruột.",warning:"Uống nhiều nước khi dùng thuốc. Liều đầu có thể gây đầy hơi, chướng bụng nhẹ.",tags:["táo bón"]},
+  {id:56,name:"Loperamide 2mg (Imodium)",active:"Loperamide",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Viên uống",indication:"Kiểm soát triệu chứng tiêu chảy cấp không rõ nguyên nhân ở người lớn.",warning:"TUYỆT ĐỐI không dùng khi tiêu chảy do nhiễm khuẩn, lỵ (phân có máu, sốt) — giữ vi khuẩn lại gây nhiễm độc.",tags:["tiêu chảy"]},
+  {id:57,name:"Spasfon",active:"Phloroglucinol",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Viên uống",indication:"Đau do co thắt đường mật, tiêu hóa, tiết niệu và đau bụng kinh.",warning:"Không phối hợp với thuốc chống co thắt mạnh khác (như Atropin).",tags:["đau bụng","đau bụng kinh","co thắt"]},
+  {id:58,name:"Buscopan 10mg",active:"Hyoscine butylbromide",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Viên uống",indication:"Giảm co thắt cơ trơn dạ dày–ruột, đường mật, tiết niệu (đau quặn thận, đau quặn mật).",warning:"Gây khô miệng, mờ mắt nhẹ. Chống chỉ định người tăng nhãn áp (glaucoma) hoặc phì đại tuyến tiền liệt.",tags:["đau bụng","co thắt","đau quặn"]},
+  {id:59,name:"Kreon 10000",active:"Men tụy: Lipase, Amylase, Protease",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Viên uống",indication:"Thay thế enzyme tụy ở người suy tụy ngoại tiết (viêm tụy mạn, sau phẫu thuật cắt tụy).",warning:"Uống ngay trong bữa ăn. Nuốt nguyên, không nhai — nhai làm hỏng men bảo vệ enzyme.",tags:["khó tiêu","suy tụy"]},
+  {id:60,name:"No-Spa 40mg",active:"Drotaverine",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Viên uống",indication:"Giảm co thắt cơ trơn trong đau quặn mật, quặn thận, co thắt dạ dày ruột, đau bụng kinh.",warning:"Thận trọng người suy gan, suy thận, suy tim nặng.",tags:["đau bụng","đau bụng kinh","co thắt"]},
+  {id:61,name:"Rectiofar",active:"Glycerin 3g bơm hậu môn",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Bơm hậu môn",indication:"Điều trị táo bón cơ năng, làm mềm phân.",warning:"Chỉ dùng khi thật cần. Không lạm dụng hàng ngày vì mất phản xạ đại tiện tự nhiên.",tags:["táo bón"]},
+  {id:62,name:"Maalox",active:"Aluminium hydroxide + Magnesium hydroxide",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Viên nhai",indication:"Kháng acid dịch vị, điều trị đau loét dạ dày–tá tràng, đầy bụng, khó tiêu do thừa acid.",warning:"Uống sau ăn 1–3 tiếng. Thành phần nhôm gây táo bón, magie gây tiêu chảy.",tags:["đau dạ dày","ợ chua","khó tiêu"]},
+  {id:63,name:"Omeprazole 20mg",active:"Omeprazole",type:"Rx",cat:"Tiêu hóa & Dạ dày",form:"Viên uống",indication:"Loét dạ dày tá tràng, trào ngược dạ dày thực quản, dự phòng loét do NSAID.",warning:"Uống trước ăn sáng 30 phút. Không tự ý dùng liên tục quá 2 tuần.",tags:["loét dạ dày","trào ngược"]},
+  {id:64,name:"Pantoloc 40mg",active:"Pantoprazole",type:"Rx",cat:"Tiêu hóa & Dạ dày",form:"Viên uống",indication:"Viêm loét dạ dày tiến triển, trào ngược acid, diệt H.pylori.",warning:"Dùng lâu năm có thể giảm magie máu, tăng nguy cơ loãng xương, gãy xương.",tags:["loét dạ dày","trào ngược","HP"]},
+  {id:65,name:"Pariet 20mg",active:"Rabeprazole",type:"Rx",cat:"Tiêu hóa & Dạ dày",form:"Viên uống",indication:"Lành các vết loét dạ dày, thực quản, hội chứng Zollinger-Ellison.",warning:"Không bẻ đôi hay nhai viên. Báo bác sĩ nếu tiêu chảy phân lỏng kéo dài.",tags:["loét dạ dày","trào ngược"]},
+  {id:66,name:"Primperan 10mg",active:"Metoclopramide",type:"Rx",cat:"Tiêu hóa & Dạ dày",form:"Viên uống",indication:"Điều trị buồn nôn, nôn, hỗ trợ nhu động dạ dày ở người ăn uống chậm tiêu.",warning:"Không dùng trẻ dưới 1 tuổi. Có thể gây co giật cơ mặt, run tay nếu dùng quá liều hoặc kéo dài.",tags:["buồn nôn","nôn","khó tiêu"]},
+  {id:67,name:"Sorbitol 5g",active:"Sorbitol",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Gói bột",indication:"Điều trị táo bón, hỗ trợ cải thiện đầy bụng.",warning:"Pha với nửa ly nước uống sáng lúc đói. Không dùng người viêm đại tràng co thắt.",tags:["táo bón","đầy bụng"]},
+  {id:68,name:"Dulcolax 5mg",active:"Bisacodyl",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Viên uống",indication:"Điều trị táo bón ngắn ngày, làm sạch đại tràng trước phẫu thuật.",warning:"Nuốt nguyên viên vào buổi tối (hiệu quả sau 6–12 tiếng). Không uống chung sữa hoặc kháng acid. Không dùng quá 5 ngày.",tags:["táo bón"]},
+  {id:69,name:"Air-X",active:"Simethicone",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Viên nhai",indication:"Giảm đầy bụng, chướng hơi, sình bụng sau ăn.",warning:"Phải nhai kỹ trước khi nuốt để phá vỡ bong bóng khí.",tags:["đầy bụng","chướng hơi"]},
+  {id:70,name:"Proctolog",active:"Trimebutine + Ruscogenins",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Viên đặt / Kem",indication:"Giảm đau, ngứa, rát do trĩ cấp và viêm nứt hậu môn.",warning:"Chỉ điều trị triệu chứng ngắn hạn trong đợt trĩ cấp.",tags:["trĩ","đau hậu môn"]},
+  {id:71,name:"Fortrans",active:"Polyethylene glycol",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Gói bột",indication:"Làm sạch đại tràng trước nội soi, chụp X-quang hoặc phẫu thuật ruột.",warning:"Pha mỗi gói với đúng 1 lít nước, uống tổng 3–4 lít. Gây tiêu chảy lỏng nhiều lần (tác dụng đích).",tags:["táo bón","nội soi"]},
+  {id:72,name:"Debridat 100mg",active:"Trimebutine",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Viên uống",indication:"Điều hòa nhu động ruột trong hội chứng ruột kích thích (IBS), đầy bụng, trướng bụng.",warning:"Uống trước bữa ăn. Hiếm gặp tác dụng phụ.",tags:["đầy bụng","IBS","ruột kích thích"]},
+  {id:73,name:"Ginkor Fort",active:"Ginkgo biloba + Heptaminol",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Viên uống",indication:"Điều trị suy tuần hoàn tĩnh mạch (nặng chân) và triệu chứng đợt cấp của trĩ.",warning:"Heptaminol có thể tăng huyết áp nhẹ và cho kết quả dương tính khi kiểm tra doping.",tags:["trĩ","nặng chân","suy tĩnh mạch"]},
+  {id:74,name:"Daflon 500mg",active:"Diosmin + Hesperidin",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Viên uống",indication:"Điều trị suy tĩnh mạch mạn tính (đau chân, phù chân), điều trị trĩ cấp và mạn.",warning:"Trong trĩ cấp, nếu sau 15 ngày không đỡ cần đi khám chuyên khoa ngay.",tags:["trĩ","suy tĩnh mạch","phù chân"]},
+
+  // --- Kháng sinh & Kháng khuẩn ---
+  {id:75,name:"Augmentin 625mg / 1g",active:"Amoxicillin + Acid Clavulanic",type:"Rx",cat:"Kháng sinh & Kháng khuẩn",form:"Viên uống",indication:"Nhiễm khuẩn hô hấp trên/dưới (viêm xoang, viêm tai, viêm phế quản), nhiễm khuẩn da, tiết niệu.",warning:"Uống đúng liều đủ ngày (thường 5–7 ngày), không tự ngưng khi triệu chứng giảm. Uống đầu bữa ăn.",tags:["nhiễm khuẩn","viêm xoang","viêm tai","kháng sinh"]},
+  {id:76,name:"Zinnat 250/500mg",active:"Cefuroxime",type:"Rx",cat:"Kháng sinh & Kháng khuẩn",form:"Viên uống",indication:"Nhiễm khuẩn tai mũi họng, hô hấp dưới, tiết niệu và sinh dục.",warning:"Uống đúng giờ, đủ liều. Tác dụng phụ thường gặp: tiêu chảy, rối loạn tiêu hóa nhẹ.",tags:["nhiễm khuẩn","kháng sinh"]},
+  {id:77,name:"Klacid 250/500mg",active:"Clarithromycin",type:"Rx",cat:"Kháng sinh & Kháng khuẩn",form:"Viên uống",indication:"Nhiễm khuẩn hô hấp, da, mô mềm; diệt vi khuẩn H.pylori dạ dày.",warning:"Có thể gây vị đắng trong miệng. Tránh dùng người tiền sử kéo dài khoảng QT.",tags:["nhiễm khuẩn","kháng sinh","HP"]},
+  {id:78,name:"Zithromax 500mg",active:"Azithromycin",type:"Rx",cat:"Kháng sinh & Kháng khuẩn",form:"Viên uống",indication:"Nhiễm khuẩn hô hấp, viêm phổi cộng đồng, nhiễm khuẩn da, bệnh lây qua đường tình dục.",warning:"Liệu trình ngắn (3–5 ngày) do bán thải rất dài. Uống trước ăn 1 giờ hoặc sau ăn 2 giờ.",tags:["nhiễm khuẩn","kháng sinh","viêm phổi"]},
+  {id:79,name:"Ciprofloxacin 500mg",active:"Ciprofloxacin",type:"Rx",cat:"Kháng sinh & Kháng khuẩn",form:"Viên uống",indication:"Nhiễm khuẩn đường tiết niệu, sinh dục, tiêu hóa (tiêu chảy nhiễm khuẩn), viêm xoang nặng.",warning:"Uống đủ ngày. Không dùng trẻ dưới 18 tuổi (tổn thương sụn khớp).",tags:["nhiễm khuẩn","tiết niệu","kháng sinh"]},
+  {id:80,name:"Cephalexin 500mg",active:"Cephalexin",type:"Rx",cat:"Kháng sinh & Kháng khuẩn",form:"Viên uống",indication:"Nhiễm khuẩn hô hấp, tai mũi họng, nhiễm khuẩn da và mô mềm nhẹ.",warning:"Thận trọng người dị ứng Penicillin (nguy cơ dị ứng chéo ~10%). Dùng 5–7 ngày.",tags:["nhiễm khuẩn","kháng sinh","viêm da"]},
+  {id:81,name:"Acyclovir 200/400/800mg",active:"Acyclovir",type:"Rx",cat:"Kháng sinh & Kháng khuẩn",form:"Viên uống",indication:"Điều trị nhiễm virus Herpes simplex (mụn rộp môi, sinh dục) và Varicella zoster (thủy đậu, zona).",warning:"Uống càng sớm càng tốt khi xuất hiện triệu chứng đầu tiên. Uống nhiều nước tránh hại thận.",tags:["herpes","thủy đậu","zona"]},
+  {id:82,name:"Amoxicillin 500mg",active:"Amoxicillin",type:"Rx",cat:"Kháng sinh & Kháng khuẩn",form:"Viên uống",indication:"Nhiễm khuẩn hô hấp trên, tiết niệu nhẹ, nhiễm khuẩn da.",warning:"Uống đúng giờ và đủ liều (5–7 ngày). Có thể gây dị ứng phát ban và tiêu chảy nhẹ.",tags:["nhiễm khuẩn","kháng sinh"]},
+  {id:83,name:"Flagyl 250/500mg",active:"Metronidazole",type:"Rx",cat:"Kháng sinh & Kháng khuẩn",form:"Viên uống",indication:"Nhiễm khuẩn kỵ khí, nhiễm roi Trichomonas sinh dục, lỵ amib.",warning:"TUYỆT ĐỐI không uống rượu trong thời gian dùng và 3 ngày sau khi ngưng (phản ứng antabuse: nôn mửa, tim đập nhanh).",tags:["nhiễm khuẩn","kỵ khí","kháng sinh"]},
+  {id:84,name:"Doxycycline 100mg",active:"Doxycycline",type:"Rx",cat:"Kháng sinh & Kháng khuẩn",form:"Viên uống",indication:"Nhiễm khuẩn hô hấp, tiết niệu, mụn trứng cá bọc nặng, sốt mò.",warning:"Không dùng trẻ dưới 8 tuổi và phụ nữ mang thai (hoen ố răng vĩnh viễn). Uống đứng với nhiều nước.",tags:["nhiễm khuẩn","mụn trứng cá","kháng sinh"]},
+  {id:85,name:"Tavanic 500mg",active:"Levofloxacin",type:"Rx",cat:"Kháng sinh & Kháng khuẩn",form:"Viên uống",indication:"Viêm phổi cộng đồng, viêm xoang cấp, nhiễm khuẩn đường tiết niệu phức tạp.",warning:"Tránh tiếp xúc ánh nắng mặt trời (nhạy cảm ánh sáng). Nguy cơ viêm hoặc đứt gân Achilles.",tags:["nhiễm khuẩn","viêm phổi","kháng sinh"]},
+  {id:86,name:"Cefixime 200mg",active:"Cefixime",type:"Rx",cat:"Kháng sinh & Kháng khuẩn",form:"Viên uống",indication:"Nhiễm khuẩn tiết niệu, viêm tai giữa, viêm họng, viêm phế quản cấp.",warning:"Thận trọng người suy thận (cần chỉnh liều). Uống đủ liệu trình để tránh kháng thuốc.",tags:["nhiễm khuẩn","kháng sinh"]},
+  {id:87,name:"Dalacin C 300mg",active:"Clindamycin",type:"Rx",cat:"Kháng sinh & Kháng khuẩn",form:"Viên uống",indication:"Nhiễm khuẩn xương khớp, ổ bụng, da và mô mềm nặng.",warning:"Theo dõi sát tình trạng tiêu chảy. Nguy cơ cao viêm đại tràng giả mạc do C. difficile.",tags:["nhiễm khuẩn","kháng sinh"]},
+  {id:88,name:"Bactrim",active:"Sulfamethoxazole + Trimethoprim",type:"Rx",cat:"Kháng sinh & Kháng khuẩn",form:"Viên uống",indication:"Nhiễm khuẩn đường tiết niệu, lỵ trực khuẩn, viêm phổi Pneumocystis jirovecii.",warning:"Uống nhiều nước để tránh sỏi thận. Nguy cơ dị ứng da nghiêm trọng (hội chứng Stevens-Johnson).",tags:["nhiễm khuẩn","tiết niệu","kháng sinh"]},
+  {id:89,name:"Rovamycine 1.5MUI",active:"Spiramycin",type:"Rx",cat:"Kháng sinh & Kháng khuẩn",form:"Viên uống",indication:"Nhiễm khuẩn hô hấp, da, mô mềm; điều trị nhiễm Toxoplasma ở phụ nữ mang thai.",warning:"Không dùng chung thuốc chứa alkaloid nấm cựa gà (co mạch gây hoại tử đầu chi).",tags:["nhiễm khuẩn","kháng sinh","mang thai"]},
+  {id:90,name:"Rodogyl",active:"Spiramycin + Metronidazole",type:"Rx",cat:"Kháng sinh & Kháng khuẩn",form:"Viên uống",indication:"Nhiễm khuẩn răng miệng cấp tính/mạn tính (áp xe răng, viêm nướu, viêm nha chu).",warning:"Gây vị kim loại trong miệng. Cấm uống rượu khi dùng thuốc.",tags:["nhiễm khuẩn","răng miệng","kháng sinh"]},
+  {id:91,name:"Fugacar 500mg",active:"Mebendazole",type:"OTC",cat:"Kháng sinh & Kháng khuẩn",form:"Viên uống",indication:"Tẩy giun đũa, giun tóc, giun móc, giun kim ở người lớn và trẻ em trên 2 tuổi.",warning:"Định kỳ tẩy giun 6 tháng/lần. Không dùng phụ nữ mang thai (3 tháng đầu) và trẻ dưới 1 tuổi.",tags:["giun sán","tẩy giun"]},
+  {id:92,name:"Zentel 200/400mg",active:"Albendazole",type:"OTC",cat:"Kháng sinh & Kháng khuẩn",form:"Viên uống",indication:"Tẩy giun đường ruột; điều trị sán lợn, sán dây, giun lươn.",warning:"Tẩy giun thông thường chỉ cần 1 viên. Phụ nữ sinh sản cần chắc chắn không mang thai.",tags:["giun sán","tẩy giun"]},
+  {id:93,name:"Sporal 100mg",active:"Itraconazole",type:"Rx",cat:"Kháng sinh & Kháng khuẩn",form:"Viên uống",indication:"Điều trị nhiễm nấm toàn thân, candida âm đạo, nấm móng, nấm da nặng.",warning:"Uống ngay sau bữa ăn no. Thuốc có thể gây độc gan — kiểm tra men gan nếu dùng dài ngày.",tags:["nấm","nấm da","nấm móng"]},
+  {id:94,name:"Nizoral viên 200mg",active:"Ketoconazole",type:"Rx",cat:"Kháng sinh & Kháng khuẩn",form:"Viên uống",indication:"Điều trị nhiễm nấm toàn thân, candida nội tạng khi các thuốc khác không dung nạp.",warning:"Nguy cơ suy gan cấp rất cao, chỉ dùng khi không còn lựa chọn nào khác. Xét nghiệm men gan liên tục.",tags:["nấm"]},
+
+  // --- Tim mạch & Huyết áp ---
+  {id:95,name:"Amlor 5mg",active:"Amlodipine",type:"Rx",cat:"Tim mạch & Huyết áp",form:"Viên uống",indication:"Điều trị tăng huyết áp, kiểm soát đau thắt ngực ổn định mạn tính.",warning:"Uống đều mỗi ngày vào giờ cố định. Tác dụng phụ: phù cổ chân, nhức đầu nhẹ đầu mùa điều trị.",tags:["tăng huyết áp","đau thắt ngực","tim mạch"]},
+  {id:96,name:"Concor 2.5/5mg",active:"Bisoprolol",type:"Rx",cat:"Tim mạch & Huyết áp",form:"Viên uống",indication:"Điều trị tăng huyết áp, đau thắt ngực, suy tim mạn tính ổn định.",warning:"Không tự ý ngưng đột ngột — nguy cơ cơn tăng huyết áp hoặc nhồi máu cơ tim. Theo dõi nhịp tim.",tags:["tăng huyết áp","suy tim","tim mạch"]},
+  {id:97,name:"Coveram 5/5mg",active:"Perindopril + Amlodipine",type:"Rx",cat:"Tim mạch & Huyết áp",form:"Viên uống",indication:"Điều trị tăng huyết áp vô căn ở người cần phối hợp thuốc.",warning:"Có thể gây ho khan dai dẳng (do Perindopril). Không tự ngưng nếu ho — báo bác sĩ đổi thuốc.",tags:["tăng huyết áp","tim mạch"]},
+  {id:98,name:"Plavix 75mg",active:"Clopidogrel",type:"Rx",cat:"Tim mạch & Huyết áp",form:"Viên uống",indication:"Dự phòng biến cố do huyết khối động mạch (nhồi máu cơ tim, đột quỵ, bệnh động mạch ngoại biên).",warning:"Tăng nguy cơ chảy máu. Báo nha sĩ/bác sĩ phẫu thuật trước khi làm thủ thuật.",tags:["huyết khối","nhồi máu cơ tim","đột quỵ"]},
+  {id:99,name:"Aspirin 81mg",active:"Acetylsalicylic acid (chống kết tập tiểu cầu)",type:"Rx",cat:"Tim mạch & Huyết áp",form:"Viên uống",indication:"Ngăn cục máu đông, phòng ngừa nhồi máu cơ tim tái phát và đột quỵ.",warning:"Nuốt nguyên viên (bao tan tại ruột). Ngưng ngay nếu phân đen như bã cà phê.",tags:["huyết khối","nhồi máu cơ tim","đột quỵ"]},
+  {id:100,name:"Vastarel MR 35mg",active:"Trimetazidine",type:"Rx",cat:"Tim mạch & Huyết áp",form:"Viên uống",indication:"Liệu pháp bổ sung trong đau thắt ngực ổn định không kiểm soát đầy đủ.",warning:"Không dùng cắt cơn đau thắt ngực cấp tính. Thuốc có thể gây hoặc làm nặng triệu chứng Parkinson.",tags:["đau thắt ngực","tim mạch"]},
+  {id:101,name:"Adalat LA 30mg",active:"Nifedipine",type:"Rx",cat:"Tim mạch & Huyết áp",form:"Viên uống",indication:"Điều trị tăng huyết áp mạn tính, dự phòng đau thắt ngực ổn định.",warning:"Nuốt nguyên viên, không được nhai/bẻ đôi (giải phóng kéo dài 24h — nhai gây tụt huyết áp cấp).",tags:["tăng huyết áp","đau thắt ngực"]},
+  {id:102,name:"Cozaar 50mg",active:"Losartan",type:"Rx",cat:"Tim mạch & Huyết áp",form:"Viên uống",indication:"Tăng huyết áp, bảo vệ thận ở bệnh nhân tiểu đường tuýp 2 có protein niệu.",warning:"Chống chỉ định tuyệt đối phụ nữ mang thai (gây dị tật/chết thai). Kiểm tra kali máu định kỳ.",tags:["tăng huyết áp","tiểu đường"]},
+  {id:103,name:"Diovan 80mg",active:"Valsartan",type:"Rx",cat:"Tim mạch & Huyết áp",form:"Viên uống",indication:"Tăng huyết áp, điều trị suy tim, hỗ trợ sau nhồi máu cơ tim.",warning:"Không dùng chung thuốc bổ sung kali — thuốc giữ kali gây loạn nhịp tim nếu kali tăng quá cao.",tags:["tăng huyết áp","suy tim"]},
+  {id:104,name:"Micardis 40mg",active:"Telmisartan",type:"Rx",cat:"Tim mạch & Huyết áp",form:"Viên uống",indication:"Điều trị tăng huyết áp vô căn, giảm biến cố tim mạch người nguy cơ cao.",warning:"Viên rất dễ hút ẩm, chỉ bóc khỏi vỉ ngay trước khi uống. Không dùng khi tắc mật nặng.",tags:["tăng huyết áp"]},
+  {id:105,name:"Renitec 5mg",active:"Enalapril",type:"Rx",cat:"Tim mạch & Huyết áp",form:"Viên uống",indication:"Điều trị tăng huyết áp, suy tim có triệu chứng.",warning:"Gây ho khan dai dẳng ở nhiều người. Nếu phù mạch (sưng môi, mặt) ngưng ngay và đi cấp cứu.",tags:["tăng huyết áp","suy tim"]},
+  {id:106,name:"Captopril 25mg",active:"Captopril",type:"Rx",cat:"Tim mạch & Huyết áp",form:"Viên uống",indication:"Điều trị tăng huyết áp, suy tim; xử trí khẩn cấp cơn tăng huyết áp (ngậm dưới lưỡi).",warning:"Khi ngậm dưới lưỡi khẩn cấp: theo dõi huyết áp mỗi 15 phút, tránh tụt huyết áp tư thế đứng.",tags:["tăng huyết áp","cấp cứu huyết áp"]},
+  {id:107,name:"Lasix 40mg",active:"Furosemide",type:"Rx",cat:"Tim mạch & Huyết áp",form:"Viên uống",indication:"Lợi tiểu mạnh trị phù do tim, gan, thận; hỗ trợ hạ huyết áp khi suy thận.",warning:"Gây đi tiểu nhiều, mất kali và nước. Tránh uống tối muộn để không mất ngủ do đi tiểu đêm.",tags:["phù","suy tim","lợi tiểu"]},
+  {id:108,name:"Aldactone 25mg",active:"Spironolactone",type:"Rx",cat:"Tim mạch & Huyết áp",form:"Viên uống",indication:"Lợi tiểu giữ kali trị phù do xơ gan cổ chướng, suy tim mạn tính.",warning:"Tác dụng phụ: chứng vú to đau ở nam, rối loạn kinh nguyệt ở nữ (tác động nội tiết).",tags:["phù","suy tim","xơ gan","lợi tiểu"]},
+  {id:109,name:"Nitrong 2.6mg",active:"Nitroglycerin",type:"Rx",cat:"Tim mạch & Huyết áp",form:"Viên uống",indication:"Phòng ngừa và điều trị dài hạn cơn đau thắt ngực do bệnh mạch vành.",warning:"KHÔNG dùng chung thuốc trị rối loạn cương dương (Viagra) — tụt huyết áp nghiêm trọng chết người.",tags:["đau thắt ngực","tim mạch"]},
+  {id:110,name:"Exforge 5mg/80mg",active:"Amlodipine + Valsartan",type:"Rx",cat:"Tim mạch & Huyết áp",form:"Viên uống",indication:"Điều trị tăng huyết áp vô căn ở người không kiểm soát được bằng đơn trị liệu.",warning:"Không tự ý ngưng khi huyết áp về bình thường. Có thể gây phù mắt cá chân nhẹ.",tags:["tăng huyết áp"]},
+
+  // --- Đái tháo đường ---
+  {id:111,name:"Glucophage 500/850/1000mg",active:"Metformin",type:"Rx",cat:"Đái tháo đường",form:"Viên uống",indication:"Điều trị đái tháo đường tuýp 2, đặc biệt ở bệnh nhân quá cân.",warning:"Uống trong hoặc ngay sau bữa ăn để giảm tác dụng phụ tiêu hóa. Theo dõi chức năng thận định kỳ.",tags:["tiểu đường","đái tháo đường"]},
+  {id:112,name:"Diamicron MR 30/60mg",active:"Gliclazide",type:"Rx",cat:"Đái tháo đường",form:"Viên uống",indication:"Điều trị đái tháo đường tuýp 2 khi không kiểm soát được bằng chế độ ăn và tập luyện.",warning:"Uống vào bữa ăn sáng. Nguy cơ hạ đường huyết (vã mồ hôi, bủn rủn) nếu bỏ bữa hoặc ăn muộn.",tags:["tiểu đường","đái tháo đường"]},
+  {id:113,name:"Forxiga 10mg",active:"Dapagliflozin",type:"Rx",cat:"Đái tháo đường",form:"Viên uống",indication:"Điều trị đái tháo đường tuýp 2; điều trị suy tim mạn tính.",warning:"Tăng đào thải đường qua nước tiểu gây nhiễm trùng tiết niệu, sinh dục. Uống nhiều nước, vệ sinh kỹ.",tags:["tiểu đường","suy tim"]},
+  {id:114,name:"Januvia 100mg",active:"Sitagliptin",type:"Rx",cat:"Đái tháo đường",form:"Viên uống",indication:"Kiểm soát đường huyết đái tháo đường tuýp 2 đơn trị liệu hoặc phối hợp Metformin.",warning:"Ngưng thuốc và đến bệnh viện ngay nếu đau bụng cấp dữ dội thấu sau lưng (viêm tụy cấp).",tags:["tiểu đường"]},
+  {id:115,name:"Amaryl 2mg",active:"Glimepiride",type:"Rx",cat:"Đái tháo đường",form:"Viên uống",indication:"Điều trị đái tháo đường tuýp 2 khi Metformin đơn độc không đủ.",warning:"Uống ngay trước hoặc trong bữa ăn sáng. Luôn mang kẹo ngọt đề phòng hạ đường huyết đột ngột.",tags:["tiểu đường"]},
+  {id:116,name:"Daonil 5mg",active:"Glibenclamide",type:"Rx",cat:"Đái tháo đường",form:"Viên uống",indication:"Hạ đường huyết ở bệnh nhân tiểu đường tuýp 2 không phụ thuộc insulin.",warning:"Thuốc thế hệ cũ, nguy cơ hạ đường huyết kéo dài rất cao ở người già, suy thận. Không bỏ bữa sau uống.",tags:["tiểu đường"]},
+  {id:117,name:"Insulin Mixtard 30/70",active:"Insulin hỗn hợp",type:"Rx",cat:"Đái tháo đường",form:"Tiêm",indication:"Điều trị đái tháo đường tuýp 1, tuýp 2 khi thuốc uống hết hiệu quả hoặc tiểu đường thai kỳ.",warning:"Bảo quản trong ngăn mát 2–8°C, không để đông đá. Tiêm dưới da 30 phút trước ăn, xoay vòng vị trí tiêm.",tags:["tiểu đường","insulin"]},
+  {id:118,name:"Glucovance 500mg/2.5mg",active:"Metformin + Glibenclamide",type:"Rx",cat:"Đái tháo đường",form:"Viên uống",indication:"Phối hợp bước 2 trị tiểu đường tuýp 2.",warning:"Uống ngay trước bữa ăn. Nguy cơ tụt đường huyết mạnh hơn Metformin đơn độc.",tags:["tiểu đường"]},
+
+  // --- Mỡ máu & Cholesterol ---
+  {id:119,name:"Lipitor 10/20mg",active:"Atorvastatin",type:"Rx",cat:"Mỡ máu & Cholesterol",form:"Viên uống",indication:"Hạ cholesterol toàn phần, LDL, triglyceride máu; phòng ngừa biến cố tim mạch.",warning:"Uống vào buổi tối. Báo bác sĩ nếu đau cơ/yếu cơ không rõ nguyên nhân (nguy cơ tiêu cơ vân). Tránh ăn bưởi.",tags:["cholesterol","mỡ máu","tim mạch"]},
+  {id:120,name:"Crestor 10mg",active:"Rosuvastatin",type:"Rx",cat:"Mỡ máu & Cholesterol",form:"Viên uống",indication:"Tăng cholesterol nguyên phát, rối loạn lipid máu hỗn hợp, phòng ngừa tim mạch.",warning:"Thận trọng liều cao ở người châu Á. Kiểm tra men gan và chức năng cơ.",tags:["cholesterol","mỡ máu"]},
+  {id:121,name:"Lipanthyl 200mg",active:"Fenofibrate",type:"Rx",cat:"Mỡ máu & Cholesterol",form:"Viên uống",indication:"Điều trị tăng triglyceride máu nặng hoặc phối hợp khi statin không đủ hiệu quả.",warning:"Uống vào bữa ăn chính. Báo bác sĩ nếu đau cơ, yếu cơ, đặc biệt khi dùng chung với statin.",tags:["mỡ máu","triglyceride"]},
+
+  // --- Xương khớp & Gút ---
+  {id:122,name:"Glucosamine Sulfate 1500mg",active:"Glucosamine Sulfate",type:"OTC",cat:"Xương khớp & Gút",form:"Viên uống",indication:"Giảm triệu chứng thoái hóa khớp gối nhẹ và trung bình, hỗ trợ sụn khớp.",warning:"Hiệu quả chậm, dùng liên tục 2–3 tháng mới rõ rệt. Thận trọng người dị ứng hải sản vỏ cứng.",tags:["thoái hóa khớp","đau khớp gối"]},
+  {id:123,name:"Colchicine 1mg",active:"Colchicine",type:"Rx",cat:"Xương khớp & Gút",form:"Viên uống",indication:"Cắt cơn gút cấp tính, dự phòng tái phát cơn gút mạn tính.",warning:"Khoảng cách giữa liều hiệu quả và liều độc rất hẹp. Nếu tiêu chảy nặng: dừng thuốc lập tức và báo bác sĩ.",tags:["gút","đau khớp"]},
+  {id:124,name:"Zyloric 100/300mg",active:"Allopurinol",type:"Rx",cat:"Xương khớp & Gút",form:"Viên uống",indication:"Giảm acid uric máu, dự phòng cơn gút mạn tính, sỏi urat thận.",warning:"TUYỆT ĐỐI không uống khi đang có cơn gút cấp (làm đau dữ dội hơn). Nguy cơ dị ứng Stevens-Johnson.",tags:["gút","acid uric"]},
+  {id:125,name:"Artrodar 50mg",active:"Diacerein",type:"Rx",cat:"Xương khớp & Gút",form:"Viên uống",indication:"Điều trị triệu chứng thoái hóa khớp gối, hông; tác dụng chậm giúp bảo vệ sụn.",warning:"Tiêu chảy và nước tiểu vàng sậm/đỏ là tác dụng phụ phổ biến và lành tính. Cần kiên trì nhiều tuần.",tags:["thoái hóa khớp","đau khớp"]},
+  {id:126,name:"Fosamax 70mg",active:"Alendronate",type:"Rx",cat:"Xương khớp & Gút",form:"Viên uống",indication:"Điều trị và dự phòng loãng xương ở phụ nữ sau mãn kinh và nam giới.",warning:"Uống 1 viên/tuần ngay khi thức dậy với ly nước đầy. Đứng/ngồi thẳng 30 phút sau uống, không nằm (loét thực quản).",tags:["loãng xương","gãy xương"]},
+
+  // --- Thần kinh & Tâm thần ---
+  {id:127,name:"Tanakan 40mg",active:"Ginkgo Biloba",type:"OTC",cat:"Thần kinh & Tâm thần",form:"Viên uống",indication:"Rối loạn chú ý, trí nhớ ở người già; chóng mặt, ù tai do mạch máu não.",warning:"Tránh dùng trước phẫu thuật 2 tuần hoặc dùng chung thuốc chống đông (Aspirin) — tăng nguy cơ chảy máu.",tags:["suy giảm trí nhớ","chóng mặt","ù tai"]},
+  {id:128,name:"Cebraton",active:"Đinh lăng + Bạch quả",type:"OTC",cat:"Thần kinh & Tâm thần",form:"Viên uống",indication:"Suy giảm trí nhớ, kém tập trung, căng thẳng thần kinh.",warning:"Không dùng người xuất huyết cấp tính, phụ nữ mang thai, hoặc người bị hành kinh kéo dài.",tags:["suy giảm trí nhớ","kém tập trung"]},
+  {id:129,name:"Piracetam 800mg",active:"Piracetam",type:"Rx",cat:"Thần kinh & Tâm thần",form:"Viên uống",indication:"Suy giảm nhận thức, chóng mặt, hỗ trợ sau đột quỵ thiếu máu não.",warning:"Có thể gây bồn chồn, mất ngủ nếu uống tối muộn. Thận trọng người suy thận nặng.",tags:["suy giảm nhận thức","đột quỵ","chóng mặt"]},
+  {id:130,name:"Mimosa",active:"Thảo dược an thần",type:"OTC",cat:"Thần kinh & Tâm thần",form:"Viên uống",indication:"Điều trị mất ngủ, giấc ngủ đến chậm, suy nhược thần kinh.",warning:"Không dùng khi lái xe, vận hành máy móc. Không dùng chung rượu bia.",tags:["mất ngủ","an thần"]},
+  {id:131,name:"Stilnox 10mg",active:"Zolpidem",type:"Rx",cat:"Thần kinh & Tâm thần",form:"Viên uống",indication:"Điều trị ngắn hạn chứng mất ngủ nghiêm trọng gây suy nhược ở người lớn.",warning:"Thuốc hướng thần, dễ gây nghiện. Uống ngay trước ngủ, đảm bảo ngủ đủ 7–8 tiếng.",tags:["mất ngủ"]},
+  {id:132,name:"Neurontin 300mg",active:"Gabapentin",type:"Rx",cat:"Thần kinh & Tâm thần",form:"Viên uống",indication:"Điều trị đau thần kinh do thoát vị đĩa đệm, tiểu đường, zona; hỗ trợ cắt cơn động kinh.",warning:"Tăng liều từ từ, không dừng đột ngột (nguy cơ co giật). Gây buồn ngủ, chóng mặt mạnh tuần đầu.",tags:["đau thần kinh","động kinh","zona"]},
+  {id:133,name:"Stugeron 25mg",active:"Cinnarizine",type:"OTC",cat:"Thần kinh & Tâm thần",form:"Viên uống",indication:"Kiểm soát rối loạn tiền đình (chóng mặt, ù tai, buồn nôn), phòng ngừa say tàu xe.",warning:"Uống sau bữa ăn. Gây buồn ngủ nặng, không lái xe hoặc làm việc trên cao.",tags:["chóng mặt","tiền đình","say tàu xe"]},
+  {id:134,name:"Tanganil 500mg",active:"Acetylleucine",type:"OTC",cat:"Thần kinh & Tâm thần",form:"Viên uống",indication:"Điều trị cơn chóng mặt đột ngột, chóng mặt do thay đổi tư thế, chóng mặt tiền đình mạn tính.",warning:"Không lạm dụng dài ngày nếu chưa rõ nguyên nhân. Chống chỉ định người dị ứng lúa mì.",tags:["chóng mặt","tiền đình"]},
+  {id:135,name:"Rotunda 30mg",active:"Rotundin",type:"OTC",cat:"Thần kinh & Tâm thần",form:"Viên uống",indication:"An thần, giảm đau, chữa mất ngủ do lo âu, căng thẳng hoặc đau cơ, đau dây thần kinh.",warning:"Không lạm dụng liều cao kéo dài (độc gan). Gây li bì, ức chế thần kinh.",tags:["mất ngủ","an thần","đau thần kinh"]},
+  {id:136,name:"Seduxen 5mg",active:"Diazepam",type:"Rx",cat:"Thần kinh & Tâm thần",form:"Viên uống",indication:"Điều trị lo âu nặng, mất ngủ cấp tính, co thắt cơ, cắt cơn co giật, cai rượu.",warning:"Thuốc quản lý đặc biệt, nguy cơ nghiện rất cao nếu dùng quá 2–4 tuần. Không lái xe.",tags:["mất ngủ","lo âu","co giật"]},
+  {id:137,name:"Amitriptyline 25mg",active:"Amitriptyline",type:"Rx",cat:"Thần kinh & Tâm thần",form:"Viên uống",indication:"Điều trị trầm cảm nội sinh, đau thần kinh mạn tính, dự phòng đau đầu vận mạch.",warning:"Gây khô miệng, táo bón, buồn ngủ nặng đầu mùa. Nguy cơ hạ huyết áp tư thế đứng.",tags:["trầm cảm","đau thần kinh"]},
+  {id:138,name:"Zoloft 50mg",active:"Sertraline",type:"Rx",cat:"Thần kinh & Tâm thần",form:"Viên uống",indication:"Trầm cảm, rối loạn hoảng sợ, lo âu xã hội, rối loạn cưỡng chế (OCD).",warning:"Phải dùng vài tuần mới thấy hiệu quả. Không ngưng đột ngột (hội chứng cai).",tags:["trầm cảm","lo âu","OCD"]},
+  {id:139,name:"Betaserc 16mg",active:"Betahistine",type:"Rx",cat:"Thần kinh & Tâm thần",form:"Viên uống",indication:"Điều trị hội chứng Ménière (chóng mặt, ù tai, nôn mửa, suy giảm thính lực).",warning:"Uống trong hoặc sau bữa ăn. Thận trọng người tiền sử loét dạ dày hoặc hen phế quản.",tags:["chóng mặt","ù tai","Ménière","tiền đình"]},
+  {id:140,name:"Somazina",active:"Citicoline dạng uống",type:"OTC",cat:"Thần kinh & Tâm thần",form:"Ống uống",indication:"Hỗ trợ phục hồi chức năng não sau đột quỵ, chấn thương sọ não, suy giảm trí nhớ.",warning:"Dung nạp tốt. Có thể gây hạ huyết áp nhẹ hoặc rối loạn tiêu hóa thoáng qua.",tags:["đột quỵ","suy giảm trí nhớ","phục hồi thần kinh"]},
+  {id:141,name:"Gliatilin 400mg",active:"Choline Alfoscerate",type:"Rx",cat:"Thần kinh & Tâm thần",form:"Viên uống",indication:"Suy giảm nhận thức, sa sút trí tuệ do mạch máu não, hỗ trợ phục hồi sau tai biến.",warning:"Dùng đợt dài ngày dưới theo dõi bác sĩ. Có thể gây lo âu, mất ngủ nhẹ.",tags:["suy giảm nhận thức","tai biến"]},
+  {id:142,name:"Depakine 200/500mg",active:"Sodium valproate",type:"Rx",cat:"Thần kinh & Tâm thần",form:"Viên uống",indication:"Điều trị các thể bệnh động kinh, dự phòng và điều trị hưng cảm trong rối loạn lưỡng cực.",warning:"Độc gan nặng, kiểm tra chức năng gan định kỳ. Chống chỉ định tuyệt đối phụ nữ mang thai (dị tật ống thần kinh).",tags:["động kinh","rối loạn lưỡng cực"]},
+  {id:143,name:"Xanax 0.5mg",active:"Alprazolam",type:"Rx",cat:"Thần kinh & Tâm thần",form:"Viên uống",indication:"Điều trị ngắn hạn lo âu hoảng sợ tột độ, lo âu kèm trầm cảm.",warning:"Gây nghiện và hội chứng cai thuốc mạnh. Chỉ dùng liều thấp nhất, thời gian ngắn nhất.",tags:["lo âu","hoảng sợ"]},
+  {id:144,name:"Dogmatil 50mg",active:"Sulpiride",type:"Rx",cat:"Thần kinh & Tâm thần",form:"Viên uống",indication:"Điều trị ngắn hạn lo âu, rối loạn tâm thần thể nhẹ ở người lớn.",warning:"Gây tăng tiết sữa, mất kinh ở nữ và chứng vú to ở nam. Gây buồn ngủ và hội chứng ngoại tháp nếu quá liều.",tags:["lo âu","tâm thần"]},
+
+  // --- Gan & Mật ---
+  {id:145,name:"Boganic",active:"Atiso, Rau đắng đất, Bìm bìm",type:"OTC",cat:"Gan & Mật",form:"Viên uống",indication:"Thanh nhiệt, giải độc gan, trị mụn nhọt, dị ứng, mề đay do suy giảm chức năng gan.",warning:"Không dùng người viêm tắc đường mật hoặc đang tiêu chảy.",tags:["gan","thanh nhiệt","giải độc"]},
+  {id:146,name:"Eganin",active:"Arginine tidiacicat",type:"OTC",cat:"Gan & Mật",form:"Viên uống",indication:"Hỗ trợ điều trị suy chức năng gan, rối loạn chức năng gan do nhiễm độc, viêm gan mạn.",warning:"Chỉ hỗ trợ, không thay thế thuốc điều trị đặc hiệu viêm gan virus. Thận trọng người hen phế quản.",tags:["gan","viêm gan"]},
+  {id:147,name:"Legalon 140mg",active:"Silymarin",type:"OTC",cat:"Gan & Mật",form:"Viên uống",indication:"Hỗ trợ điều trị viêm gan mạn tính, xơ gan, tổn thương gan do nhiễm độc (rượu, hóa chất).",warning:"Thuốc dung nạp tốt nhưng không dùng người hôn mê gan hoặc tắc mật hoàn toàn.",tags:["gan","xơ gan","viêm gan"]},
+
+  // --- Da liễu & Vết thương ---
+  {id:148,name:"Canesten kem bôi",active:"Clotrimazole",type:"OTC",cat:"Da liễu & Vết thương",form:"Kem bôi",indication:"Điều trị tại chỗ nhiễm nấm da: nấm kẽ tay/chân, hắc lào, lang ben, nấm âm hộ.",warning:"Thoa ngày 2–3 lần. Tiếp tục bôi thêm 2 tuần sau khi triệu chứng biến mất để ngừa tái phát.",tags:["nấm da","hắc lào","lang ben","nấm kẽ chân"]},
+  {id:149,name:"Silkron kem bôi",active:"Betamethasone + Clotrimazole + Gentamicin",type:"Rx",cat:"Da liễu & Vết thương",form:"Kem bôi",indication:"Viêm da đáp ứng corticoid khi có biến chứng nhiễm trùng và nhiễm nấm (chàm, hắc lào nhiễm khuẩn).",warning:"Corticoid 3 thành phần mạnh. Không bôi mặt trị mụn, không bôi diện rộng cho trẻ em (teo da, rạn da).",tags:["viêm da","chàm","nấm da"]},
+  {id:150,name:"Fucidin kem bôi 2%",active:"Acid fusidic",type:"Rx",cat:"Da liễu & Vết thương",form:"Kem bôi",indication:"Nhiễm trùng da do tụ cầu khuẩn: chốc lở, viêm nang lông, vết thương nhiễm trùng.",warning:"Chỉ bôi vùng tổn thương, tránh mắt. Dùng tối đa 7–14 ngày để tránh kháng thuốc.",tags:["nhiễm trùng da","chốc lở","viêm nang lông"]},
+  {id:151,name:"Bepanthen Balm",active:"Dexpanthenol / Pro-vitamin B5",type:"OTC",cat:"Da liễu & Vết thương",form:"Kem bôi",indication:"Chăm sóc và bảo vệ da mông trẻ tránh hăm tã; trị nứt nẻ đầu ti ở phụ nữ cho con bú.",warning:"Thoa lớp mỏng sau mỗi lần thay tã. Lau sạch đầu ti trước khi cho bé bú lại. Cực an toàn.",tags:["hăm tã","nứt da","da trẻ em"]},
+  {id:152,name:"Contractubex",active:"Dịch chiết hành tây + Heparin + Allantoin",type:"OTC",cat:"Da liễu & Vết thương",form:"Gel bôi",indication:"Điều trị sẹo lồi, sẹo phì đại, sẹo biến dạng sau phẫu thuật, bỏng hoặc tai nạn.",warning:"Bôi và massage nhẹ nhàng vài lần/ngày. Hiệu quả tốt nhất trên sẹo mới. Sẹo cũ cần nhiều tháng.",tags:["sẹo","sẹo lồi","sẹo phì đại"]},
+  {id:153,name:"Povidine 10%",active:"Povidone-Iodine",type:"OTC",cat:"Da liễu & Vết thương",form:"Dung dịch",indication:"Sát trùng vết thương nông, xước da, sát khuẩn da trước phẫu thuật hoặc tiêm.",warning:"Không bôi diện rộng kéo dài người bệnh tuyến giáp (iod hấp thu qua da). Tránh dính vào mắt.",tags:["sát trùng","vết thương"]},
+  {id:154,name:"Oxy già 3%",active:"Hydrogen peroxide 3%",type:"OTC",cat:"Da liễu & Vết thương",form:"Dung dịch",indication:"Sát trùng vết thương rách da bẩn, đẩy dị vật, mủ ra ngoài.",warning:"Chỉ dùng vết thương bẩn mới bị. KHÔNG nhỏ vào vết thương đang lên da non hoặc vết loét mạn tính.",tags:["sát trùng","vết thương bẩn"]},
+  {id:155,name:"Cồn 70 độ",active:"Ethanol 70%",type:"OTC",cat:"Da liễu & Vết thương",form:"Dung dịch",indication:"Sát trùng da trước khi tiêm, sát khuẩn tay nhanh, sát trùng dụng cụ y tế bề mặt.",warning:"Không đổ trực tiếp vào vết thương hở lớn (đau rát, hoại tử mô). Dễ cháy, tránh xa trẻ em.",tags:["sát trùng","sát khuẩn tay"]},
+  {id:156,name:"Castellani",active:"Dung dịch Magenta",type:"OTC",cat:"Da liễu & Vết thương",form:"Dung dịch",indication:"Điều trị nhiễm khuẩn, nấm da: chốc lở, nấm kẽ chân, viêm da mủ.",warning:"Nhuộm màu đỏ bám rất dai trên da và quần áo. Tránh bôi vết thương hở sâu chảy máu nhiều.",tags:["nấm da","nhiễm trùng da","viêm da"]},
+  {id:157,name:"Diprosalic kem bôi",active:"Betamethasone + Salicylic acid",type:"Rx",cat:"Da liễu & Vết thương",form:"Kem bôi",indication:"Điều trị bệnh da khô, sừng hóa đáp ứng corticoid: vảy nến, á sừng, chàm mạn tính.",warning:"Không bôi lên vùng da mỏng (mặt, nách, bẹn), không bôi diện rộng kéo dài.",tags:["vảy nến","chàm","á sừng"]},
+  {id:158,name:"Dermovate kem bôi",active:"Clobetasol propionate",type:"Rx",cat:"Da liễu & Vết thương",form:"Kem bôi",indication:"Điều trị ngắn hạn viêm da, ngứa nặng không đáp ứng corticoid yếu hơn (vảy nến dai dẳng, chàm khó trị).",warning:"Corticoid mạnh nhất (Nhóm I). Chỉ bôi tối đa 2 tuần liên tục.",tags:["vảy nến","chàm","viêm da"]},
+  {id:159,name:"Erylik gel",active:"Erythromycin + Tretinoin",type:"Rx",cat:"Da liễu & Vết thương",form:"Gel bôi",indication:"Điều trị mụn trứng cá mức độ trung bình, mụn viêm, mụn mủ.",warning:"Chỉ bôi buổi tối, chấm đúng nốt mụn. Gây kích ứng da mạnh đầu mùa. Bắt buộc chống nắng ban ngày.",tags:["mụn trứng cá","mụn viêm"]},
+  {id:160,name:"Klenzit MS",active:"Adapalene 0.1%",type:"OTC",cat:"Da liễu & Vết thương",form:"Gel bôi",indication:"Điều trị mụn trứng cá ẩn, mụn đầu đen, mụn đầu trắng.",warning:"Bôi lớp mỏng buổi tối. Tránh để dính vào mắt, môi, mũi. Da sẽ nhạy cảm hơn với ánh nắng.",tags:["mụn trứng cá","mụn đầu đen"]},
+  {id:161,name:"Hiruscar Gel",active:"Beta-glucan + Allantoin + Heparin",type:"OTC",cat:"Da liễu & Vết thương",form:"Gel bôi",indication:"Gel mờ sẹo mụn, sẹo thâm, hỗ trợ làm phẳng và mềm sẹo sau phẫu thuật.",warning:"Chỉ bôi lên vết thương đã khép miệng hoàn toàn, đã lên da non. Massage nhẹ nhàng ngày 2–3 lần.",tags:["sẹo mụn","sẹo thâm","sẹo phẫu thuật"]},
+  {id:162,name:"Kamistad-Gel N",active:"Chamomile + Lidocaine",type:"OTC",cat:"Da liễu & Vết thương",form:"Gel bôi",indication:"Gel bôi giảm đau, kháng viêm tại chỗ trong viêm lợi, nhiệt miệng, loét miệng do niềng răng.",warning:"Lidocaine gây tê tại chỗ giúp giảm đau nhanh. Không bôi quá nhiều hoặc lạm dụng cho trẻ nhỏ.",tags:["nhiệt miệng","viêm lợi","loét miệng"]},
+  {id:163,name:"Oracortia",active:"Triamcinolone acetonide 0.1%",type:"OTC",cat:"Da liễu & Vết thương",form:"Kem bôi",indication:"Giảm tạm thời viêm nhiễm, loét khoang miệng (nhiệt miệng nặng) tại chỗ.",warning:"Bôi màng mỏng lên tổn thương trước ngủ. Không bôi khi miệng đang bị nhiễm nấm candida.",tags:["nhiệt miệng","loét miệng"]},
+
+  // --- Mắt, Tai, Mũi họng ---
+  {id:164,name:"Tobradex nhỏ mắt",active:"Tobramycin + Dexamethasone",type:"Rx",cat:"Mắt, Tai, Mũi họng",form:"Nhỏ mắt",indication:"Điều trị viêm mắt có chỉ định dùng corticoid và nguy cơ/đang nhiễm khuẩn mắt.",warning:"KHÔNG tự ý mua nhỏ khi đỏ mắt thông thường. Loét giác mạc do nấm/virus mà nhỏ thuốc này: thủng giác mạc, mù lòa.",tags:["viêm mắt","đỏ mắt","nhiễm khuẩn mắt"]},
+  {id:165,name:"Tobrex nhỏ mắt",active:"Tobramycin 0.3%",type:"OTC",cat:"Mắt, Tai, Mũi họng",form:"Nhỏ mắt",indication:"Điều trị nhiễm khuẩn ngoài nhãn cầu và phần phụ của mắt (viêm kết mạc, lẹo mắt).",warning:"Sau mở nắp chỉ dùng tối đa 28 ngày. Không để đầu nhỏ giọt chạm vào mắt.",tags:["viêm kết mạc","lẹo mắt","đỏ mắt"]},
+  {id:166,name:"Systane Ultra",active:"Nước mắt nhân tạo",type:"OTC",cat:"Mắt, Tai, Mũi họng",form:"Nhỏ mắt",indication:"Giảm rát mắt, kích ứng do khô mắt (ngồi máy tính nhiều, phòng điều hòa).",warning:"Tháo kính áp tròng trước nhỏ (chờ 15 phút sau mới đeo lại). Bỏ lọ sau 30 ngày mở nắp.",tags:["khô mắt","mỏi mắt"]},
+  {id:167,name:"Betadine súc họng và miệng",active:"Povidone-Iodine 1%",type:"OTC",cat:"Mắt, Tai, Mũi họng",form:"Dung dịch",indication:"Diệt khuẩn viêm họng, viêm amidan, loét miệng, khử trùng khoang miệng sau nhổ răng.",warning:"TUYỆT ĐỐI không được nuốt. Không dùng quá 14 ngày hoặc dùng người bệnh tuyến giáp.",tags:["viêm họng","nhiệt miệng","khử trùng miệng"]},
+  {id:168,name:"Sanlein 0.1 nhỏ mắt",active:"Natri hyaluronate",type:"OTC",cat:"Mắt, Tai, Mũi họng",form:"Nhỏ mắt",indication:"Điều trị rối loạn biểu mô giác–kết mạc do khô mắt, hội chứng Sjogren hoặc sau phẫu thuật mắt.",warning:"Không để đầu lọ chạm vào mi mắt (nhiễm khuẩn lọ thuốc). Bỏ sau 30 ngày mở nắp.",tags:["khô mắt","mắt mệt"]},
+  {id:169,name:"Eyemiru 40 EX nhỏ mắt",active:"Vitamin A, E, B6 + Allantoin",type:"OTC",cat:"Mắt, Tai, Mũi họng",form:"Nhỏ mắt",indication:"Giảm mỏi mắt, đỏ mắt, ngứa mắt, phòng ngừa bệnh về mắt sau bơi hoặc đi đường bụi.",warning:"Không nhỏ thuốc khi đang đeo kính áp tròng mềm.",tags:["mỏi mắt","đỏ mắt","ngứa mắt"]},
+  {id:170,name:"V.Rohto New nhỏ mắt",active:"Neostigmine + Chlorpheniramine + Zinc",type:"OTC",cat:"Mắt, Tai, Mũi họng",form:"Nhỏ mắt",indication:"Trị mỏi mắt, xung huyết kết mạc, ngứa mắt do khói bụi, máy tính.",warning:"Không lạm dụng nhỏ nhiều lần/ngày vì chất co mạch gây đỏ mắt dội ngược khi ngưng thuốc.",tags:["mỏi mắt","đỏ mắt","ngứa mắt"]},
+  {id:171,name:"Eludril nước súc miệng",active:"Chlorhexidine 0.1%",type:"OTC",cat:"Mắt, Tai, Mũi họng",form:"Dung dịch",indication:"Sát khuẩn khoang miệng, hỗ trợ điều trị viêm nướu, viêm nha chu, chăm sóc sau phẫu thuật răng.",warning:"Cần pha loãng theo đúng vạch. Dùng trên 2 tuần có thể gây răng nâu tạm thời.",tags:["viêm nướu","viêm nha chu","hôi miệng"]},
+  {id:172,name:"Listerine Cool Mint",active:"Menthol + Thymol + Eucalyptol",type:"OTC",cat:"Mắt, Tai, Mũi họng",form:"Dung dịch",indication:"Nước súc miệng hàng ngày diệt khuẩn, chống mảng bám, bảo vệ nướu.",warning:"Súc 30 giây sau đánh răng rồi nhổ ra, không được nuốt. Không dùng cho trẻ dưới 6 tuổi.",tags:["hôi miệng","viêm nướu"]},
+  {id:173,name:"Polydexa nhỏ tai",active:"Polymyxin B + Neomycin + Dexamethasone",type:"Rx",cat:"Mắt, Tai, Mũi họng",form:"Nhỏ tai",indication:"Điều trị viêm tai ngoài, chàm ống tai ngoài nhiễm khuẩn khi màng nhĩ còn nguyên vẹn.",warning:"BẮT BUỘC kiểm tra màng nhĩ trước khi nhỏ. Màng nhĩ thủng + nhỏ thuốc này: điếc vĩnh viễn.",tags:["viêm tai","đau tai"]},
+
+  // --- Vitamin & Khoáng chất ---
+  {id:174,name:"Enervon",active:"Vitamin C 500mg + Vitamin B tổng hợp",type:"OTC",cat:"Vitamin & Khoáng chất",form:"Viên uống",indication:"Điều trị thiếu hụt vitamin, tăng sức đề kháng khi mệt mỏi, chán ăn hoặc sau khi ốm dậy.",warning:"Uống sau ăn no (tránh xót ruột). Nước tiểu sẽ có màu vàng đậm do B2 thải ra (bình thường).",tags:["thiếu vitamin","tăng đề kháng","mệt mỏi"]},
+  {id:175,name:"Tardyferon B9",active:"Sắt II sulfate + Acid folic",type:"OTC",cat:"Vitamin & Khoáng chất",form:"Viên uống",indication:"Dự phòng và điều trị thiếu máu do thiếu sắt ở phụ nữ mang thai, cho con bú.",warning:"Không uống chung trà, cà phê, sữa (mất hấp thu sắt). Thuốc làm phân có màu đen tro (bình thường).",tags:["thiếu máu","thiếu sắt","mang thai"]},
+  {id:176,name:"Calcium Corbiere",active:"Canxi glucoheptonate",type:"OTC",cat:"Vitamin & Khoáng chất",form:"Ống thủy tinh",indication:"Bổ sung canxi cho trẻ chậm lớn, còi xương, phụ nữ mang thai/cho con bú, người già loãng xương.",warning:"Bẻ ống cẩn thận tránh mảnh vụn. Không uống buổi tối muộn (sỏi thận, mất ngủ).",tags:["thiếu canxi","còi xương","loãng xương"]},
+  {id:177,name:"Vitamin 3B Phúc Vinh",active:"B1 + B6 + B12",type:"OTC",cat:"Vitamin & Khoáng chất",form:"Viên uống",indication:"Điều trị đau dây thần kinh, viêm đa dây thần kinh, mệt mỏi thể chất, thiếu hụt vitamin nhóm B.",warning:"Không dùng liều cao kéo dài nhiều tháng vì B6 liều cao có thể gây độc tính ngược (tê bì chân tay).",tags:["đau thần kinh","tê bì","thiếu vitamin B"]},
+  {id:178,name:"Aquadetrim",active:"Vitamin D3",type:"OTC",cat:"Vitamin & Khoáng chất",form:"Nhỏ giọt",indication:"Phòng ngừa và điều trị thiếu hụt vitamin D3, còi xương, co thắt do thiếu canxi ở trẻ.",warning:"Nhỏ đúng số giọt chỉ định (thường 1–2 giọt/ngày). Quá liều gây tăng canxi huyết, nôn mửa, tổn thương thận.",tags:["thiếu vitamin D","còi xương","trẻ em"]},
+  {id:179,name:"Arcalion 200mg",active:"Sulbutiamine",type:"OTC",cat:"Vitamin & Khoáng chất",form:"Viên uống",indication:"Điều trị suy nhược thể chất hoặc tinh thần, mệt mỏi kéo dài ở người lớn.",warning:"Chỉ dùng cho người trên 18 tuổi. Thời gian điều trị tối đa khuyến cáo 4 tuần.",tags:["mệt mỏi","suy nhược"]},
+  {id:180,name:"Glucosamine Sulfate 1500mg",active:"Glucosamine Sulfate",type:"OTC",cat:"Vitamin & Khoáng chất",form:"Viên uống",indication:"Giảm triệu chứng thoái hóa khớp gối nhẹ và trung bình, hỗ trợ sụn khớp.",warning:"Hiệu quả chậm, dùng liên tục 2–3 tháng mới rõ rệt. Thận trọng người dị ứng hải sản.",tags:["thoái hóa khớp","đau khớp gối","sụn khớp"]},
+  {id:181,name:"Enat 400",active:"Vitamin E 400IU",type:"OTC",cat:"Vitamin & Khoáng chất",form:"Viên nang",indication:"Điều trị và dự phòng thiếu vitamin E; hỗ trợ chống lão hóa da, bảo vệ tế bào.",warning:"Vitamin tan trong dầu, uống ngay sau bữa ăn giàu chất béo để hấp thu tối đa. Không dùng liều cao liên tục nhiều năm.",tags:["thiếu vitamin E","da"]},
+  {id:182,name:"Vitamin A-D (Nang mềm)",active:"Vitamin A + Vitamin D",type:"OTC",cat:"Vitamin & Khoáng chất",form:"Viên nang",indication:"Phòng và điều trị khô mắt, quáng gà do thiếu vitamin A; phòng còi xương do thiếu vitamin D.",warning:"TUYỆT ĐỐI không dùng quá liều. Phụ nữ mang thai không uống quá 5.000 IU Vitamin A/ngày (dị tật bẩm sinh).",tags:["thiếu vitamin A","quáng gà","còi xương"]},
+  {id:183,name:"Pharmaton viên nang",active:"Vitamin tổng hợp + Nhân sâm",type:"OTC",cat:"Vitamin & Khoáng chất",form:"Viên nang",indication:"Giảm mệt mỏi thể chất, kiệt sức, giảm tập trung ở người lao động trí óc căng thẳng.",warning:"Không dùng buổi tối (mất ngủ). Chống chỉ định người tăng huyết áp nặng chưa kiểm soát hoặc rối loạn đông máu.",tags:["mệt mỏi","suy nhược","kém tập trung"]},
+  {id:184,name:"ZinC-Kid",active:"Kẽm Gluconate",type:"OTC",cat:"Vitamin & Khoáng chất",form:"Siro",indication:"Bổ sung kẽm cho trẻ còi xương, suy dinh dưỡng, tiêu chảy cấp mạn tính; tăng cường miễn dịch.",warning:"Nên uống cùng hoặc ngay sau bữa ăn để tránh kích ứng dạ dày gây nôn oẹ ở trẻ nhỏ.",tags:["thiếu kẽm","trẻ em","suy dinh dưỡng"]},
+  {id:185,name:"Magne-B6 Corbiere",active:"Magnesium + Vitamin B6",type:"OTC",cat:"Vitamin & Khoáng chất",form:"Ống uống",indication:"Điều trị thiếu hụt magnesi, giảm co thắt cơ (chuột rút), mệt mỏi, yếu cơ.",warning:"Bổ sung magnesi đầy đủ trước khi bổ sung canxi để tránh rối loạn hấp thu. Thận trọng người suy thận.",tags:["chuột rút","thiếu magie","mệt mỏi"]},
+  {id:186,name:"Upsavit C 1000mg",active:"Vitamin C 1000mg (viên sủi)",type:"OTC",cat:"Vitamin & Khoáng chất",form:"Viên sủi",indication:"Điều trị thiếu hụt vitamin C nặng (bệnh Scorbut), tăng đề kháng cấp tính khi cảm cúm.",warning:"Hàm lượng C rất cao — không uống buổi tối (mất ngủ dữ dội, tăng nguy cơ sỏi thận). Uống sau ăn no.",tags:["thiếu vitamin C","tăng đề kháng","cảm cúm"]},
+
+  // --- Nội tiết & Sinh sản ---
+  {id:187,name:"Postinor 1 / Postinor 2",active:"Levonorgestrel",type:"OTC",cat:"Nội tiết & Sinh sản",form:"Viên uống",indication:"Tránh thai khẩn cấp trong vòng 72 giờ sau khi quan hệ tình dục không bảo vệ.",warning:"Uống càng sớm càng tốt. Không dùng quá 2 lần/chu kỳ kinh nguyệt (rối loạn nội tiết nặng).",tags:["tránh thai khẩn cấp"]},
+  {id:188,name:"New Choice (Tránh thai hàng ngày)",active:"Progestogen",type:"OTC",cat:"Nội tiết & Sinh sản",form:"Viên uống",indication:"Tránh thai đường uống hàng ngày, điều hòa chu kỳ kinh nguyệt.",warning:"Uống đều mỗi ngày vào giờ cố định. Nếu quên thuốc, đọc kỹ hướng dẫn xử lý quên thuốc ngay.",tags:["tránh thai"]},
+  {id:189,name:"Synthroid 50mcg",active:"Levothyroxine",type:"Rx",cat:"Nội tiết & Sinh sản",form:"Viên uống",indication:"Liệu pháp thay thế hormon tuyến giáp trong suy giáp do mọi nguyên nhân, u tuyến giáp.",warning:"Uống sáng, bụng đói hoàn toàn, trước ăn 30–60 phút. Không uống chung thuốc có Canxi hoặc Sắt.",tags:["suy giáp","tuyến giáp"]},
+  {id:190,name:"Duphaston 10mg",active:"Dydrogesterone",type:"Rx",cat:"Nội tiết & Sinh sản",form:"Viên uống",indication:"Điều trị dọa sảy thai, sảy thai liên tiếp do thiếu progesterone, đau bụng kinh, lạc nội mạc tử cung.",warning:"Theo dõi sát xuất huyết âm đạo bất thường. Dùng đúng liều, đúng ngày chu kỳ kinh theo chỉ định.",tags:["dọa sảy thai","đau bụng kinh","rối loạn kinh nguyệt"]},
+  {id:191,name:"Medisamin 500mg",active:"Acid Tranexamic",type:"Rx",cat:"Nội tiết & Sinh sản",form:"Viên uống",indication:"Cầm máu trong rong kinh nặng, chảy máu cam, sau phẫu thuật nhổ răng ở người rối loạn đông máu.",warning:"Chống chỉ định tuyệt đối người tiền sử huyết khối (tắc mạch máu, đột quỵ, nhồi máu cơ tim).",tags:["rong kinh","chảy máu"]},
+  {id:192,name:"Marvelon",active:"Desogestrel + Ethinylestradiol",type:"OTC",cat:"Nội tiết & Sinh sản",form:"Viên uống",indication:"Thuốc tránh thai hàng ngày vỉ 21 viên, giúp ngừa thai an toàn và điều hòa kinh nguyệt.",warning:"Uống viên đầu tiên ngày thứ nhất của chu kỳ kinh, uống liên tục 1 viên/ngày, hết vỉ nghỉ 7 ngày. Thận trọng người hút thuốc trên 35 tuổi.",tags:["tránh thai"]},
+  {id:193,name:"Rigevidon",active:"Levonorgestrel + Ethinylestradiol",type:"OTC",cat:"Nội tiết & Sinh sản",form:"Viên uống",indication:"Thuốc tránh thai hàng ngày vỉ 28 viên (21 viên nội tiết + 7 viên sắt bổ trợ).",warning:"Uống liên tục không nghỉ ngày nào giữa các vỉ. Nếu quên, uống bù ngay khi nhớ ra theo quy tắc quên thuốc.",tags:["tránh thai"]},
+  {id:194,name:"Canesten viên đặt âm đạo 500mg",active:"Clotrimazole",type:"OTC",cat:"Nội tiết & Sinh sản",form:"Viên đặt",indication:"Điều trị nhiễm nấm vùng kín (viêm âm đạo do nấm Candida) ở phụ nữ.",warning:"Đặt sâu vào âm đạo vào buổi tối trước ngủ. Tránh quan hệ tình dục trong điều trị. Thuốc làm giảm độ bền bao cao su.",tags:["nấm âm đạo","viêm âm đạo"]},
+  {id:195,name:"Polygynax viên đặt âm đạo",active:"Polymyxin B + Neomycin + Nystatin",type:"Rx",cat:"Nội tiết & Sinh sản",form:"Viên đặt",indication:"Điều trị viêm âm đạo do vi khuẩn nhạy cảm và nấm Candida phối hợp.",warning:"Đặt liên tục 12 ngày, kể cả khi đang hành kinh. Nhúng ướt nhẹ viên thuốc trước khi đặt sâu.",tags:["viêm âm đạo"]},
+  {id:196,name:"Viagra 50mg",active:"Sildenafil",type:"Rx",cat:"Nội tiết & Sinh sản",form:"Viên uống",indication:"Điều trị rối loạn cương dương ở nam giới trưởng thành.",warning:"Cấm dùng người bệnh tim mạch nặng, đang dùng thuốc nhóm nitrat (tụt huyết áp nghiêm trọng). Có thể gây đau đầu, đỏ mặt.",tags:["rối loạn cương dương","sinh lý nam"]},
+  {id:197,name:"Cialis 20mg",active:"Tadalafil",type:"Rx",cat:"Nội tiết & Sinh sản",form:"Viên uống",indication:"Điều trị rối loạn cương dương; điều trị phì đại tuyến tiền liệt lành tính.",warning:"Hiệu quả kéo dài 36 giờ. Không lạm dụng, không dùng chung thuốc chẹn alpha hoặc nitrat.",tags:["rối loạn cương dương","tiền liệt tuyến"]},
+  {id:198,name:"Xatral XL 10mg",active:"Alfuzosin",type:"Rx",cat:"Nội tiết & Sinh sản",form:"Viên uống",indication:"Điều trị triệu chứng phì đại lành tính tuyến tiền liệt (tiểu rắt, tiểu đêm, tiểu yếu).",warning:"Nuốt nguyên viên ngay sau bữa ăn tối. Thuốc chẹn alpha gây tụt huyết áp tư thế đứng — đứng dậy từ từ.",tags:["tiểu rắt","tiền liệt tuyến"]},
+  {id:199,name:"Avodart 0.5mg",active:"Dutasteride",type:"Rx",cat:"Nội tiết & Sinh sản",form:"Viên nang",indication:"Điều trị và phòng ngừa tiến triển phì đại lành tính tuyến tiền liệt (làm giảm kích thước tuyến).",warning:"Dùng dài ngày (hàng tháng đến hàng năm). Phụ nữ mang thai TUYỆT ĐỐI không sờ vào viên bị rách/vỡ (dị tật thai nhi nam).",tags:["tiền liệt tuyến"]},
+  {id:200,name:"Gynofar",active:"Tinh dầu bạc hà + Đồng sulfate",type:"OTC",cat:"Nội tiết & Sinh sản",form:"Dung dịch",indication:"Vệ sinh vùng kín hàng ngày, trị ngứa âm hộ, viêm âm đạo; sát trùng vết thương ngoài da.",warning:"Chỉ dùng bôi rửa bên ngoài. TUYỆT ĐỐI không thụt rửa sâu bên trong âm đạo (mất cân bằng vi khuẩn có lợi).",tags:["vệ sinh vùng kín","viêm âm đạo","ngứa"]},
+
+  // ================================================================
+  // ===============  BỔ SUNG 100 LOẠI THUỐC (201-300)  ============
+  // ================================================================
+
+  // --- Giảm đau & Hạ sốt (bổ sung) ---
+  {id:201,name:"Panadol Viên sủi 500mg",active:"Paracetamol (viên sủi)",type:"OTC",cat:"Giảm đau & Hạ sốt",form:"Viên sủi",indication:"Hạ sốt, giảm đau nhanh nhờ dạng sủi dễ hấp thu, dùng cho đau đầu, đau cơ, cảm cúm.",warning:"Hòa tan hoàn toàn trong nước trước khi uống. Người ăn kiêng muối cần thận trọng vì hàm lượng natri trong viên sủi khá cao.",tags:["sốt","hạ sốt","đau đầu","cảm cúm"]},
+  {id:202,name:"Tatanol 80/150/250 (trẻ em)",active:"Paracetamol",type:"OTC",cat:"Giảm đau & Hạ sốt",form:"Viên đặt / Viên nén",indication:"Hạ sốt, giảm đau cho trẻ em theo cân nặng, dạng viên đặt hoặc viên nén nhỏ dễ dùng.",warning:"Tính liều theo cân nặng (10–15mg/kg/lần), không quá 4–5 lần/ngày. Tránh dùng đồng thời các sản phẩm khác có Paracetamol.",tags:["sốt","hạ sốt","trẻ em","đau đầu"]},
+  {id:203,name:"Profenid 100mg",active:"Ketoprofen",type:"Rx",cat:"Giảm đau & Hạ sốt",form:"Viên uống",indication:"Giảm đau, kháng viêm trong viêm khớp dạng thấp, thoái hóa khớp, đau sau chấn thương hoặc phẫu thuật.",warning:"Uống trong bữa ăn để giảm kích ứng dạ dày. Không dùng người có tiền sử loét tiêu hóa hoặc hen do Aspirin.",tags:["đau khớp","viêm khớp","chấn thương","đau sau phẫu thuật"]},
+  {id:204,name:"Apranax 550mg",active:"Naproxen sodium",type:"OTC",cat:"Giảm đau & Hạ sốt",form:"Viên uống",indication:"Giảm đau nhanh trong đau bụng kinh, đau đầu, đau cơ xương khớp và hạ sốt.",warning:"Không dùng quá 2 viên/ngày nếu không có chỉ định. Thận trọng ở người cao tuổi, bệnh tim mạch hoặc dạ dày.",tags:["đau bụng kinh","đau đầu","đau cơ","đau khớp","sốt"]},
+  {id:205,name:"Decolgen ND",active:"Paracetamol + Phenylephrine",type:"OTC",cat:"Giảm đau & Hạ sốt",form:"Viên uống",indication:"Giảm nhanh các triệu chứng cảm cúm, sổ mũi, nghẹt mũi, sốt mà không gây buồn ngủ.",warning:"Không dùng cho người tăng huyết áp chưa kiểm soát. Tránh dùng cùng các thuốc cảm khác có chứa Paracetamol.",tags:["cảm cúm","sốt","sổ mũi","nghẹt mũi"]},
+  {id:206,name:"Salonpas (cao dán giảm đau)",active:"Methyl salicylate + Menthol + Camphor",type:"OTC",cat:"Giảm đau & Hạ sốt",form:"Cao dán",indication:"Cao dán giảm đau tại chỗ cho đau lưng, đau cơ, đau khớp, bong gân nhẹ.",warning:"Không dán lên da bị trầy xước hoặc niêm mạc. Tối đa 3–4 miếng/ngày, mỗi miếng không quá 8 giờ.",tags:["đau lưng","đau cơ","đau khớp","chấn thương"]},
+  {id:207,name:"Decontractyl Gel",active:"Mephenesin (gel bôi)",type:"OTC",cat:"Giảm đau & Hạ sốt",form:"Gel bôi",indication:"Gel bôi giảm đau, giãn cơ tại chỗ trong căng cơ, đau vai gáy, đau lưng do co cứng cơ.",warning:"Chỉ bôi ngoài da, tránh vùng mắt và niêm mạc. Rửa tay sạch sau khi bôi.",tags:["đau lưng","đau cơ","co cơ"]},
+
+  // --- Hô hấp & Ho - cảm (bổ sung) ---
+  {id:208,name:"Atussin Siro",active:"Dextromethorphan + Chlorpheniramine + Glyceryl guaiacolate",type:"OTC",cat:"Hô hấp & Ho - cảm",form:"Siro",indication:"Siro giảm ho khan, long đờm và giảm các biểu hiện dị ứng đường hô hấp.",warning:"Gây buồn ngủ, tránh lái xe sau khi dùng. Không dùng quá 7 ngày liên tục mà chưa hỏi ý kiến bác sĩ.",tags:["ho","ho khan","đờm","dị ứng"]},
+  {id:209,name:"Pectol-E Siro",active:"Carbocisteine + Salbutamol",type:"OTC",cat:"Hô hấp & Ho - cảm",form:"Siro",indication:"Long đờm kết hợp giãn phế quản nhẹ, dùng trong viêm phế quản có đờm đặc kèm khó thở nhẹ.",warning:"Theo dõi nhịp tim ở trẻ nhỏ, Salbutamol có thể gây hồi hộp, tim đập nhanh nếu dùng quá liều.",tags:["ho","đờm","viêm phế quản","khó thở"]},
+  {id:210,name:"Theralene Siro",active:"Alimemazine",type:"Rx",cat:"Hô hấp & Ho - cảm",form:"Siro",indication:"Giảm ho do dị ứng, kèm tác dụng an thần nhẹ giúp dễ ngủ khi ho nhiều về đêm.",warning:"Gây buồn ngủ rõ rệt, không dùng khi lái xe. Thận trọng ở trẻ nhỏ và người cao tuổi (dễ kích động nghịch thường).",tags:["ho","dị ứng","mất ngủ"]},
+  {id:211,name:"Coricidin",active:"Paracetamol + Chlorpheniramine + Dextromethorphan",type:"OTC",cat:"Hô hấp & Ho - cảm",form:"Viên uống",indication:"Giảm các triệu chứng cảm cúm: sốt, nhức đầu, ho, sổ mũi, hắt hơi.",warning:"Gây buồn ngủ, không dùng khi vận hành máy móc. Không phối hợp thêm thuốc cảm khác có chứa Paracetamol.",tags:["cảm cúm","sốt","ho","sổ mũi","đau đầu"]},
+  {id:212,name:"Nazal Xịt mũi 0.05%",active:"Oxymetazoline",type:"OTC",cat:"Hô hấp & Ho - cảm",form:"Xịt mũi",indication:"Xịt mũi co mạch giảm nhanh nghẹt mũi do cảm lạnh, viêm mũi, viêm xoang.",warning:"Không dùng quá 3 ngày liên tục để tránh hiện tượng lờn thuốc gây nghẹt mũi trở lại nặng hơn.",tags:["nghẹt mũi","viêm xoang","sổ mũi"]},
+  {id:213,name:"Flixonase Xịt mũi",active:"Fluticasone propionate",type:"Rx",cat:"Hô hấp & Ho - cảm",form:"Xịt mũi",indication:"Xịt mũi corticoid kiểm soát viêm mũi dị ứng dai dẳng, nghẹt mũi, hắt hơi, sổ mũi mạn tính.",warning:"Cần dùng đều đặn hàng ngày, hiệu quả đầy đủ sau vài ngày. Không tự ý dùng liên tục nhiều tháng mà không theo dõi.",tags:["viêm mũi dị ứng","nghẹt mũi","sổ mũi","dị ứng"]},
+  {id:214,name:"Bổ Phế Nam Hà",active:"Cao thảo dược (Bạc hà, Cát cánh, Mạch môn...)",type:"OTC",cat:"Hô hấp & Ho - cảm",form:"Siro",indication:"Siro thảo dược hỗ trợ giảm ho, ho có đờm, ho do cảm lạnh, viêm họng nhẹ.",warning:"Người tiểu đường cần lưu ý hàm lượng đường trong siro. Không thay thế thuốc điều trị khi ho kéo dài kèm sốt cao.",tags:["ho","đờm","đau họng","cảm cúm"]},
+
+  // --- Dị ứng & Kháng histamin (bổ sung) ---
+  {id:215,name:"Phenergan viên 25mg",active:"Promethazine",type:"Rx",cat:"Dị ứng & Kháng histamin",form:"Viên uống",indication:"Điều trị dị ứng nặng, mề đay, ngứa toàn thân; có tác dụng an thần hỗ trợ giấc ngủ.",warning:"Gây buồn ngủ mạnh, không dùng cho trẻ dưới 2 tuổi (nguy cơ ức chế hô hấp). Tránh kết hợp rượu hoặc thuốc an thần khác.",tags:["dị ứng","mề đay","ngứa da","mất ngủ"]},
+  {id:216,name:"Lorastad 10mg",active:"Loratadine",type:"OTC",cat:"Dị ứng & Kháng histamin",form:"Viên uống",indication:"Giảm nhanh các triệu chứng dị ứng theo mùa: hắt hơi, sổ mũi, ngứa mắt, mề đay.",warning:"Ít gây buồn ngủ hơn thế hệ cũ nhưng vẫn nên thận trọng khi lái xe đường dài.",tags:["dị ứng","mề đay","viêm mũi dị ứng","ngứa mắt"]},
+  {id:217,name:"Chlorpheniramine 4mg",active:"Chlorpheniramine maleate",type:"OTC",cat:"Dị ứng & Kháng histamin",form:"Viên uống",indication:"Kháng histamin thế hệ cũ, giảm hắt hơi, sổ mũi, ngứa do dị ứng, côn trùng đốt.",warning:"Gây buồn ngủ nhiều, không dùng khi lái xe hoặc vận hành máy móc. Thận trọng ở người tăng nhãn áp, phì đại tuyến tiền liệt.",tags:["dị ứng","sổ mũi","ngứa da","côn trùng cắn"]},
+  {id:218,name:"Avamys Xịt mũi",active:"Fluticasone furoate",type:"Rx",cat:"Dị ứng & Kháng histamin",form:"Xịt mũi",indication:"Xịt mũi điều trị viêm mũi dị ứng theo mùa và lâu năm ở người lớn và trẻ em.",warning:"Lắc kỹ trước khi xịt, hướng vòi ra ngoài lệch vách ngăn mũi. Dùng kéo dài có thể gây chảy máu mũi nhẹ.",tags:["viêm mũi dị ứng","dị ứng","nghẹt mũi"]},
+  {id:219,name:"Cetirizin STADA 10mg",active:"Cetirizine",type:"OTC",cat:"Dị ứng & Kháng histamin",form:"Viên uống",indication:"Kháng histamin giảm dị ứng, mề đay, viêm mũi dị ứng quanh năm.",warning:"Có thể gây khô miệng, buồn ngủ nhẹ ở một số người. Giảm liều ở người suy thận.",tags:["dị ứng","mề đay","viêm mũi dị ứng"]},
+
+  // --- Tiêu hóa & Dạ dày (bổ sung) ---
+  {id:220,name:"Yumangel",active:"Almagate",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Hỗn dịch uống",indication:"Hỗn dịch kháng acid dạng gói, giảm nhanh đau rát thượng vị, ợ chua, đầy hơi do dư acid dạ dày.",warning:"Uống sau ăn 1–2 giờ hoặc khi đau. Cách xa các thuốc khác ít nhất 2 giờ vì có thể giảm hấp thu.",tags:["đau dạ dày","ợ chua","trào ngược","đầy bụng"]},
+  {id:221,name:"Lacteol Fort",active:"Lactobacillus LB (men vi sinh bất hoạt)",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Gói bột",indication:"Cân bằng hệ vi sinh đường ruột, hỗ trợ điều trị tiêu chảy cấp ở trẻ em và người lớn.",warning:"Pha với ít nước, uống ngay sau khi pha. An toàn dùng cùng kháng sinh.",tags:["tiêu chảy","vi sinh đường ruột"]},
+  {id:222,name:"Antinal",active:"Nifuroxazide",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Viên uống / Siro",indication:"Kháng khuẩn đường ruột tại chỗ, điều trị tiêu chảy cấp do nhiễm khuẩn không đặc hiệu.",warning:"Không hấp thu vào máu nên ít tác dụng phụ toàn thân. Nếu tiêu chảy kèm sốt cao, phân có máu cần đi khám ngay.",tags:["tiêu chảy"]},
+  {id:223,name:"Colospa 135mg",active:"Mebeverine",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Viên uống",indication:"Giảm co thắt và đau bụng trong hội chứng ruột kích thích (IBS), rối loạn tiêu hóa do co thắt.",warning:"Uống trước ăn 20 phút. Không nhai hoặc bẻ viên.",tags:["đau bụng","co thắt","IBS","đầy bụng"]},
+  {id:224,name:"Pepsane",active:"Guaiazulene + Dimeticone",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Gel uống",indication:"Gel uống bảo vệ niêm mạc dạ dày, giảm đầy hơi, ợ chua, viêm dạ dày thực quản.",warning:"Uống sau ăn và trước khi ngủ để bảo vệ niêm mạc qua đêm. Lắc kỹ trước khi dùng.",tags:["đầy bụng","ợ chua","trào ngược","đau dạ dày"]},
+  {id:225,name:"Lanzul 30mg",active:"Lansoprazole",type:"Rx",cat:"Tiêu hóa & Dạ dày",form:"Viên uống",indication:"Ức chế bơm proton điều trị loét dạ dày–tá tràng, trào ngược dạ dày thực quản nặng.",warning:"Uống trước ăn sáng. Dùng dài hạn có thể giảm hấp thu vitamin B12 và tăng nguy cơ gãy xương.",tags:["loét dạ dày","trào ngược","HP"]},
+  {id:226,name:"Carbogast",active:"Sucralfate",type:"OTC",cat:"Tiêu hóa & Dạ dày",form:"Viên uống",indication:"Tạo lớp bảo vệ bao phủ vết loét dạ dày–tá tràng, giúp vết loét nhanh lành.",warning:"Uống xa bữa ăn và xa các thuốc khác (ít nhất 2 giờ) vì có thể cản trở hấp thu. Có thể gây táo bón.",tags:["loét dạ dày","đau dạ dày"]},
+
+  // --- Kháng sinh & Kháng khuẩn (bổ sung) ---
+  {id:227,name:"Klamentin 250mg (trẻ em)",active:"Amoxicillin + Acid clavulanic",type:"Rx",cat:"Kháng sinh & Kháng khuẩn",form:"Gói / Siro",indication:"Điều trị nhiễm khuẩn hô hấp, tai mũi họng ở trẻ em (viêm tai giữa, viêm amidan).",warning:"Pha đúng theo hướng dẫn, dùng đủ liệu trình. Theo dõi phát ban hoặc tiêu chảy ở trẻ.",tags:["nhiễm khuẩn","viêm tai","kháng sinh","trẻ em"]},
+  {id:228,name:"Erythromycin 500mg",active:"Erythromycin",type:"Rx",cat:"Kháng sinh & Kháng khuẩn",form:"Viên uống",indication:"Kháng sinh nhóm Macrolid điều trị nhiễm khuẩn hô hấp, da, dùng được khi dị ứng Penicillin.",warning:"Gây rối loạn tiêu hóa (buồn nôn, đau bụng) khá thường gặp. Tránh phối hợp với một số thuốc tim mạch do tương tác.",tags:["nhiễm khuẩn","kháng sinh","viêm da"]},
+  {id:229,name:"Pyfaclor 250mg",active:"Cefaclor",type:"Rx",cat:"Kháng sinh & Kháng khuẩn",form:"Viên uống",indication:"Kháng sinh Cephalosporin thế hệ 2 điều trị viêm tai giữa, viêm họng, viêm phế quản.",warning:"Uống đủ liệu trình 7–10 ngày. Thận trọng người dị ứng Penicillin (dị ứng chéo).",tags:["nhiễm khuẩn","viêm tai","kháng sinh"]},
+  {id:230,name:"Tetracyclin 500mg",active:"Tetracycline",type:"Rx",cat:"Kháng sinh & Kháng khuẩn",form:"Viên uống",indication:"Kháng sinh điều trị mụn trứng cá nặng, một số nhiễm khuẩn hô hấp và tiết niệu.",warning:"Không dùng cho trẻ dưới 8 tuổi và phụ nữ mang thai (gây đổi màu răng vĩnh viễn). Uống xa sữa, thuốc bổ sung canxi/sắt.",tags:["mụn trứng cá","nhiễm khuẩn","kháng sinh"]},
+  {id:231,name:"Klacid MR 500mg",active:"Clarithromycin (giải phóng kéo dài)",type:"Rx",cat:"Kháng sinh & Kháng khuẩn",form:"Viên uống",indication:"Dạng phóng thích kéo dài điều trị nhiễm khuẩn hô hấp, dùng 1 lần/ngày tăng tuân thủ điều trị.",warning:"Nuốt nguyên viên, không nhai hoặc bẻ. Có thể gây vị đắng trong miệng và tương tác với nhiều thuốc khác.",tags:["nhiễm khuẩn","kháng sinh"]},
+  {id:232,name:"Fluconazole 150mg",active:"Fluconazole",type:"Rx",cat:"Kháng sinh & Kháng khuẩn",form:"Viên uống",indication:"Điều trị nhiễm nấm Candida âm đạo, nấm miệng, nấm da toàn thân với liều đơn hoặc ngắn ngày.",warning:"Không dùng cho phụ nữ mang thai. Thận trọng người bệnh gan, theo dõi men gan nếu dùng kéo dài.",tags:["nấm âm đạo","nấm","viêm âm đạo"]},
+  {id:233,name:"Acyclovir kem bôi 5%",active:"Acyclovir (kem bôi)",type:"OTC",cat:"Kháng sinh & Kháng khuẩn",form:"Kem bôi",indication:"Điều trị tại chỗ mụn rộp môi (Herpes simplex) ở giai đoạn khởi phát.",warning:"Bôi ngay khi có dấu hiệu rát, ngứa trước khi nổi mụn nước để đạt hiệu quả tốt nhất. Tránh bôi vào mắt hoặc niêm mạc miệng.",tags:["herpes","mụn rộp"]},
+
+  // --- Tim mạch & Huyết áp (bổ sung) ---
+  {id:234,name:"Betaloc Zok 50mg",active:"Metoprolol succinate",type:"Rx",cat:"Tim mạch & Huyết áp",form:"Viên uống",indication:"Điều trị tăng huyết áp, đau thắt ngực, suy tim mạn và rối loạn nhịp tim.",warning:"Không tự ý ngưng đột ngột. Thận trọng người hen phế quản vì chẹn beta có thể gây co thắt phế quản.",tags:["tăng huyết áp","đau thắt ngực","suy tim","tim mạch"]},
+  {id:235,name:"Imdur 60mg",active:"Isosorbide mononitrate",type:"Rx",cat:"Tim mạch & Huyết áp",form:"Viên uống",indication:"Dự phòng dài hạn các cơn đau thắt ngực do bệnh mạch vành.",warning:"Không dùng cắt cơn cấp. Tuyệt đối không phối hợp thuốc điều trị rối loạn cương dương (tụt huyết áp nguy hiểm).",tags:["đau thắt ngực","tim mạch"]},
+  {id:236,name:"Natrilix SR 1.5mg",active:"Indapamide",type:"Rx",cat:"Tim mạch & Huyết áp",form:"Viên uống",indication:"Lợi tiểu nhẹ điều trị tăng huyết áp, thường phối hợp với thuốc hạ áp khác.",warning:"Theo dõi kali máu định kỳ. Uống vào buổi sáng để tránh đi tiểu đêm.",tags:["tăng huyết áp","lợi tiểu"]},
+  {id:237,name:"Hydrochlorothiazide 25mg",active:"Hydrochlorothiazide",type:"Rx",cat:"Tim mạch & Huyết áp",form:"Viên uống",indication:"Lợi tiểu thiazide điều trị tăng huyết áp và phù do nhiều nguyên nhân.",warning:"Có thể gây mất kali, natri máu. Uống vào buổi sáng, tránh dùng tối muộn gây tiểu đêm.",tags:["tăng huyết áp","phù","lợi tiểu"]},
+  {id:238,name:"Procoralan 5mg",active:"Ivabradine",type:"Rx",cat:"Tim mạch & Huyết áp",form:"Viên uống",indication:"Giảm nhịp tim trong đau thắt ngực ổn định và suy tim mạn ở người không dùng được chẹn beta.",warning:"Có thể gây rối loạn thị giác tạm thời (thấy đốm sáng). Không phối hợp với một số thuốc kháng nấm, kháng sinh nhóm macrolid.",tags:["đau thắt ngực","suy tim","tim mạch"]},
+  {id:239,name:"Cordarone 200mg",active:"Amiodarone",type:"Rx",cat:"Tim mạch & Huyết áp",form:"Viên uống",indication:"Điều trị các loại rối loạn nhịp tim nặng, đặc biệt rung nhĩ và nhịp nhanh thất.",warning:"Dùng dài hạn cần theo dõi chức năng tuyến giáp, gan, phổi định kỳ vì thuốc tích lũy trong mô.",tags:["rối loạn nhịp tim","tim mạch"]},
+  {id:240,name:"Digoxin 0.25mg",active:"Digoxin",type:"Rx",cat:"Tim mạch & Huyết áp",form:"Viên uống",indication:"Tăng co bóp cơ tim, điều trị suy tim và kiểm soát nhịp trong rung nhĩ.",warning:"Khoảng điều trị hẹp, dễ ngộ độc (buồn nôn, nhìn mờ màu vàng-xanh, loạn nhịp). Cần theo dõi nồng độ thuốc trong máu.",tags:["suy tim","rối loạn nhịp tim","tim mạch"]},
+
+  // --- Đái tháo đường (bổ sung) ---
+  {id:241,name:"Mixtard 30 (bút tiêm)",active:"Insulin người (hỗn hợp 30/70)",type:"Rx",cat:"Đái tháo đường",form:"Bút tiêm",indication:"Insulin hỗn hợp tiêm dưới da điều trị đái tháo đường týp 1 và tuýp 2 không kiểm soát được bằng thuốc uống.",warning:"Tiêm trước ăn 30 phút, xoay vị trí tiêm để tránh loạn dưỡng mô mỡ. Nguy cơ hạ đường huyết nếu bỏ bữa sau tiêm.",tags:["tiểu đường","đái tháo đường"]},
+  {id:242,name:"Janumet 50/1000mg",active:"Sitagliptin + Metformin",type:"Rx",cat:"Đái tháo đường",form:"Viên uống",indication:"Phối hợp 2 cơ chế kiểm soát đường huyết ở bệnh nhân đái tháo đường tuýp 2.",warning:"Uống trong bữa ăn để giảm tác dụng phụ tiêu hóa. Ngừng thuốc tạm thời nếu chuẩn bị chụp X-quang có thuốc cản quang.",tags:["tiểu đường","đái tháo đường"]},
+  {id:243,name:"Glucerna",active:"Sữa công thức dinh dưỡng cho người đái tháo đường",type:"OTC",cat:"Đái tháo đường",form:"Bột pha uống",indication:"Bổ sung dinh dưỡng với chỉ số đường huyết thấp, hỗ trợ kiểm soát đường huyết ở người tiểu đường.",warning:"Không thay thế hoàn toàn thuốc điều trị. Người suy thận cần tham khảo ý kiến bác sĩ về lượng đạm.",tags:["tiểu đường","đái tháo đường","mệt mỏi"]},
+  {id:244,name:"Lantus (bút tiêm)",active:"Insulin glargine",type:"Rx",cat:"Đái tháo đường",form:"Bút tiêm",indication:"Insulin tác dụng kéo dài, tiêm 1 lần/ngày giúp ổn định đường huyết nền.",warning:"Không lắc mạnh bút tiêm. Tiêm cùng giờ mỗi ngày, theo dõi sát đường huyết những ngày đầu chỉnh liều.",tags:["tiểu đường","đái tháo đường"]},
+  {id:245,name:"Glucotrol XL 5mg",active:"Glipizide (giải phóng kéo dài)",type:"Rx",cat:"Đái tháo đường",form:"Viên uống",indication:"Kích thích tuyến tụy tiết insulin, điều trị đái tháo đường tuýp 2.",warning:"Uống cùng bữa ăn sáng để giảm nguy cơ hạ đường huyết. Người cao tuổi cần theo dõi sát triệu chứng hạ đường huyết.",tags:["tiểu đường","đái tháo đường"]},
+
+  // --- Mỡ máu & Cholesterol (bổ sung) ---
+  {id:246,name:"Crestor 10mg",active:"Rosuvastatin",type:"Rx",cat:"Mỡ máu & Cholesterol",form:"Viên uống",indication:"Giảm cholesterol LDL và triglyceride, dự phòng biến cố tim mạch ở người mỡ máu cao.",warning:"Có thể gây đau mỏi cơ, cần báo bác sĩ nếu đau cơ kèm yếu cơ kéo dài (nguy cơ tiêu cơ vân hiếm gặp).",tags:["mỡ máu","cholesterol cao","tim mạch"]},
+  {id:247,name:"Lipitor 10mg",active:"Atorvastatin",type:"Rx",cat:"Mỡ máu & Cholesterol",form:"Viên uống",indication:"Hạ cholesterol toàn phần, LDL trong tăng lipid máu và dự phòng bệnh mạch vành.",warning:"Tránh uống cùng nước ép bưởi (tăng nồng độ thuốc trong máu). Kiểm tra men gan trước và trong khi điều trị.",tags:["mỡ máu","cholesterol cao"]},
+  {id:248,name:"Lipanthyl 200mg",active:"Fenofibrate",type:"Rx",cat:"Mỡ máu & Cholesterol",form:"Viên uống",indication:"Điều trị tăng triglyceride máu nặng, thường phối hợp statin khi cần.",warning:"Uống trong bữa ăn để tăng hấp thu. Theo dõi chức năng gan, thận định kỳ.",tags:["mỡ máu","triglyceride cao"]},
+  {id:249,name:"Ezetrol 10mg",active:"Ezetimibe",type:"Rx",cat:"Mỡ máu & Cholesterol",form:"Viên uống",indication:"Giảm cholesterol bằng cách ức chế hấp thu cholesterol tại ruột, thường phối hợp với statin.",warning:"Không tự ý phối hợp với fibrate liều cao. Hiệu quả tối ưu khi kết hợp chế độ ăn giảm mỡ.",tags:["mỡ máu","cholesterol cao"]},
+  {id:250,name:"Simvastatin 20mg",active:"Simvastatin",type:"Rx",cat:"Mỡ máu & Cholesterol",form:"Viên uống",indication:"Hạ mỡ máu, giảm nguy cơ nhồi máu cơ tim và đột quỵ ở người rối loạn lipid máu.",warning:"Uống vào buổi tối (gan tổng hợp cholesterol nhiều về đêm). Tránh phối hợp một số kháng sinh nhóm macrolid.",tags:["mỡ máu","cholesterol cao","nhồi máu cơ tim"]},
+  {id:251,name:"Omega-3 Fish Oil 1000mg",active:"EPA + DHA",type:"OTC",cat:"Mỡ máu & Cholesterol",form:"Viên nang",indication:"Hỗ trợ giảm triglyceride máu, tốt cho tim mạch và não bộ.",warning:"Liều cao có thể gây ợ hơi mùi cá, loãng máu nhẹ — thận trọng khi phối hợp thuốc chống đông.",tags:["mỡ máu","triglyceride cao","tim mạch"]},
+
+  // --- Xương khớp & Gút (bổ sung) ---
+  {id:252,name:"Colchicine 1mg",active:"Colchicine",type:"Rx",cat:"Xương khớp & Gút",form:"Viên uống",indication:"Cắt cơn gút cấp, giảm sưng đau khớp nhanh trong vòng vài giờ.",warning:"Liều rất hẹp, quá liều gây tiêu chảy nặng, ngộ độc nguy hiểm. Không tự tăng liều dù chưa hết đau.",tags:["gút","đau khớp","acid uric"]},
+  {id:253,name:"Profenid Gel",active:"Ketoprofen (gel bôi)",type:"OTC",cat:"Xương khớp & Gút",form:"Gel bôi",indication:"Gel bôi giảm đau, kháng viêm tại chỗ cho đau khớp, đau cơ, bong gân.",warning:"Tránh ánh nắng trực tiếp lên vùng bôi thuốc — Ketoprofen gây nhạy cảm ánh sáng nặng, có thể bỏng da.",tags:["đau khớp","đau cơ","chấn thương"]},
+  {id:254,name:"Mydocalm 50mg",active:"Tolperisone",type:"Rx",cat:"Xương khớp & Gút",form:"Viên uống",indication:"Giãn cơ trung ương, giảm co cứng cơ trong đau lưng, thoái hóa cột sống cổ và thắt lưng.",warning:"Có thể gây yếu cơ, chóng mặt nhẹ đầu điều trị. Thận trọng khi lái xe trong những ngày đầu dùng thuốc.",tags:["đau lưng","co cơ","thoái hóa cột sống"]},
+  {id:255,name:"Calcitriol 0.25mcg",active:"Calcitriol (Vitamin D hoạt tính)",type:"Rx",cat:"Xương khớp & Gút",form:"Viên uống",indication:"Tăng hấp thu canxi ở ruột, hỗ trợ điều trị loãng xương và suy thận mạn có rối loạn canxi.",warning:"Theo dõi canxi máu định kỳ vì dễ gây tăng canxi máu nếu dùng liều cao kéo dài.",tags:["loãng xương","thiếu canxi"]},
+  {id:256,name:"Bonviva 150mg",active:"Ibandronic acid",type:"Rx",cat:"Xương khớp & Gút",form:"Viên uống",indication:"Điều trị loãng xương ở phụ nữ sau mãn kinh, uống 1 viên/tháng.",warning:"Uống lúc đói với nước lọc, ngồi hoặc đứng thẳng tối thiểu 1 giờ sau uống để tránh loét thực quản.",tags:["loãng xương","gãy xương"]},
+  {id:257,name:"Hyalgan (tiêm khớp)",active:"Acid hyaluronic",type:"Rx",cat:"Xương khớp & Gút",form:"Tiêm khớp",indication:"Tiêm trực tiếp vào khớp gối giúp bôi trơn, giảm đau trong thoái hóa khớp gối.",warning:"Phải do bác sĩ chuyên khoa thực hiện trong điều kiện vô khuẩn. Tránh vận động mạnh khớp vừa tiêm trong 48 giờ.",tags:["thoái hóa khớp","đau khớp gối"]},
+  {id:258,name:"JEX (Collagen Type II)",active:"Collagen Type II + Glucosamine + Collagen Peptide",type:"OTC",cat:"Xương khớp & Gút",form:"Viên uống",indication:"Hỗ trợ tái tạo sụn khớp, giảm đau và cải thiện vận động trong thoái hóa khớp.",warning:"Là sản phẩm hỗ trợ, cần dùng liên tục vài tháng mới thấy hiệu quả rõ. Không thay thế thuốc giảm đau khi đau cấp.",tags:["thoái hóa khớp","đau khớp gối","sụn khớp"]},
+  {id:259,name:"Feburic 80mg",active:"Febuxostat",type:"Rx",cat:"Xương khớp & Gút",form:"Viên uống",indication:"Giảm acid uric máu, dự phòng tái phát cơn gút ở người không đáp ứng hoặc không dung nạp Allopurinol.",warning:"Không dùng trong cơn gút cấp đang đau dữ dội. Theo dõi men gan và nguy cơ tim mạch khi dùng dài hạn.",tags:["gút","acid uric"]},
+
+  // --- Thần kinh & Tâm thần (bổ sung) ---
+  {id:260,name:"Lexomil 6mg",active:"Bromazepam",type:"Rx",cat:"Thần kinh & Tâm thần",form:"Viên uống",indication:"Điều trị ngắn hạn lo âu nặng, mất ngủ do lo âu, căng thẳng tâm lý.",warning:"Thuốc gây nghiện nếu dùng kéo dài, chỉ dùng theo chỉ định và trong thời gian ngắn nhất có thể.",tags:["lo âu","mất ngủ"]},
+  {id:261,name:"Cerebrolysin (tiêm)",active:"Peptide não heo tinh chế",type:"Rx",cat:"Thần kinh & Tâm thần",form:"Tiêm",indication:"Hỗ trợ phục hồi chức năng thần kinh sau đột quỵ, chấn thương sọ não, sa sút trí tuệ.",warning:"Chỉ dùng theo chỉ định và tiêm tại cơ sở y tế. Hiếm gặp phản ứng dị ứng tại chỗ tiêm.",tags:["đột quỵ","suy giảm trí nhớ","suy giảm nhận thức"]},
+  {id:262,name:"Etumine 25mg",active:"Levomepromazine",type:"Rx",cat:"Thần kinh & Tâm thần",form:"Viên uống",indication:"An thần mạnh, điều trị rối loạn tâm thần có kích động, lo âu nặng, mất ngủ khó trị.",warning:"Gây hạ huyết áp tư thế, buồn ngủ sâu. Cần theo dõi sát khi mới bắt đầu hoặc tăng liều.",tags:["lo âu","mất ngủ","tâm thần"]},
+  {id:263,name:"Encephabol",active:"Pyritinol",type:"OTC",cat:"Thần kinh & Tâm thần",form:"Viên uống",indication:"Cải thiện chuyển hóa năng lượng tế bào não, hỗ trợ suy giảm trí nhớ, kém tập trung ở người lớn tuổi và trẻ chậm phát triển.",warning:"Hiếm gặp rối loạn tiêu hóa, mất ngủ nhẹ nếu uống tối. Nên uống vào buổi sáng hoặc trưa.",tags:["suy giảm trí nhớ","kém tập trung"]},
+  {id:264,name:"Savi Melatonin 3mg",active:"Melatonin",type:"OTC",cat:"Thần kinh & Tâm thần",form:"Viên uống",indication:"Hỗ trợ điều hòa giấc ngủ, dùng cho người khó ngủ, lệch múi giờ (jet lag).",warning:"Uống 30–60 phút trước khi ngủ. Không dùng cho phụ nữ mang thai, cho con bú mà chưa hỏi ý kiến bác sĩ.",tags:["mất ngủ"]},
+  {id:265,name:"Risperdal 1mg",active:"Risperidone",type:"Rx",cat:"Thần kinh & Tâm thần",form:"Viên uống",indication:"Điều trị tâm thần phân liệt, hưng cảm trong rối loạn lưỡng cực, kích động ở sa sút trí tuệ.",warning:"Thuốc quản lý đặc biệt, theo dõi tăng cân, đường huyết và triệu chứng ngoại tháp (cứng cơ, run).",tags:["tâm thần","rối loạn lưỡng cực"]},
+  {id:266,name:"Topamax 25mg",active:"Topiramate",type:"Rx",cat:"Thần kinh & Tâm thần",form:"Viên uống",indication:"Điều trị động kinh, dự phòng đau nửa đầu (migraine) tái diễn.",warning:"Uống nhiều nước để tránh sỏi thận. Có thể gây tê tay chân, giảm cân, ảnh hưởng tập trung tinh thần.",tags:["động kinh","đau nửa đầu"]},
+
+  // --- Gan & Mật (bổ sung) ---
+  {id:267,name:"Fortec",active:"Silymarin + Sorbitol",type:"OTC",cat:"Gan & Mật",form:"Viên uống",indication:"Hỗ trợ bảo vệ tế bào gan, tăng cường chức năng gan ở người uống nhiều rượu bia, men gan cao.",warning:"Không thay thế điều trị đặc hiệu khi có bệnh gan do virus. Sorbitol có thể gây nhuận tràng nhẹ.",tags:["gan","men gan cao"]},
+  {id:268,name:"Ursolvan 300mg",active:"Acid ursodeoxycholic",type:"Rx",cat:"Gan & Mật",form:"Viên uống",indication:"Hòa tan sỏi mật cholesterol nhỏ, điều trị viêm gan ứ mật, xơ gan đường mật.",warning:"Dùng dài hạn cần theo dõi bằng siêu âm định kỳ. Hiệu quả chậm, cần kiên trì nhiều tháng.",tags:["sỏi mật","gan","xơ gan"]},
+  {id:269,name:"Hepa-Merz",active:"L-Ornithine L-Aspartate",type:"Rx",cat:"Gan & Mật",form:"Gói bột / Viên uống",indication:"Giảm amoniac máu trong suy gan, hỗ trợ điều trị bệnh não gan, mệt mỏi do gan yếu.",warning:"Pha với nhiều nước, uống sau ăn. Thận trọng ở người suy thận nặng (giảm thải amoniac qua thận).",tags:["gan","mệt mỏi"]},
+  {id:270,name:"Cynarine 50mg",active:"Chiết xuất Atiso",type:"OTC",cat:"Gan & Mật",form:"Viên uống",indication:"Lợi mật, thông mật, hỗ trợ tiêu hóa chất béo và giải độc gan nhẹ.",warning:"Không dùng cho người tắc nghẽn đường mật hoàn toàn. Có thể gây đầy hơi nhẹ khi mới dùng.",tags:["gan","thanh nhiệt","giải độc"]},
+  {id:271,name:"Fegintinic",active:"Vitamin nhóm B + chiết xuất gan thủy phân",type:"OTC",cat:"Gan & Mật",form:"Viên uống",indication:"Bổ gan, tăng cường chuyển hóa, hỗ trợ người mệt mỏi, ăn uống kém do chức năng gan suy giảm.",warning:"Nước tiểu có thể vàng đậm hơn do vitamin B2 (bình thường). Không dùng thay thế thuốc điều trị viêm gan.",tags:["gan","mệt mỏi","thiếu vitamin B"]},
+  {id:272,name:"Essentiale Forte",active:"Phospholipid thiết yếu từ đậu nành",type:"OTC",cat:"Gan & Mật",form:"Viên nang",indication:"Bảo vệ và phục hồi màng tế bào gan, hỗ trợ điều trị gan nhiễm mỡ, viêm gan mạn, xơ gan.",warning:"Dùng kéo dài nhiều tháng để có hiệu quả. Hiếm gặp rối loạn tiêu hóa nhẹ (đầy bụng, tiêu chảy).",tags:["gan","gan nhiễm mỡ","viêm gan"]},
+
+  // --- Da liễu & Vết thương (bổ sung) ---
+  {id:273,name:"Acnotin 20mg",active:"Isotretinoin",type:"Rx",cat:"Da liễu & Vết thương",form:"Viên nang",indication:"Điều trị mụn trứng cá nặng, mụn nang, mụn không đáp ứng kháng sinh bôi/uống.",warning:"TUYỆT ĐỐI chống chỉ định phụ nữ có thai (dị tật thai nhi nặng) — bắt buộc tránh thai khi điều trị và ít nhất 1 tháng sau ngừng thuốc. Gây khô da, khô môi nặng.",tags:["mụn trứng cá","mụn viêm"]},
+  {id:274,name:"Eumovate Kem bôi",active:"Clobetasone butyrate",type:"OTC",cat:"Da liễu & Vết thương",form:"Kem bôi",indication:"Corticoid nhẹ điều trị viêm da, chàm, côn trùng đốt mức độ nhẹ đến trung bình.",warning:"Không bôi quá 1–2 tuần liên tục, không bôi diện rộng cho trẻ nhỏ (teo da).",tags:["viêm da","chàm","côn trùng cắn","ngứa da"]},
+  {id:275,name:"Flucinar",active:"Fluocinolone acetonide",type:"Rx",cat:"Da liễu & Vết thương",form:"Kem bôi",indication:"Corticoid mạnh điều trị các bệnh da viêm mạn tính: vảy nến, chàm, lichen, viêm da tiếp xúc nặng.",warning:"Không bôi mặt, vùng da mỏng hoặc diện rộng kéo dài (teo da, giãn mạch, rạn da).",tags:["vảy nến","chàm","viêm da"]},
+  {id:276,name:"Skinoren Gel",active:"Azelaic acid 15%",type:"OTC",cat:"Da liễu & Vết thương",form:"Gel bôi",indication:"Điều trị mụn trứng cá nhẹ đến trung bình, hỗ trợ làm mờ vết thâm sau mụn và nám.",warning:"Có thể gây châm chích, đỏ da nhẹ vài ngày đầu. Tránh để dính vào mắt, môi, niêm mạc.",tags:["mụn trứng cá","sẹo thâm"]},
+  {id:277,name:"Physiogel Cream",active:"Kem dưỡng ẩm phục hồi hàng rào da",type:"OTC",cat:"Da liễu & Vết thương",form:"Kem bôi",indication:"Dưỡng ẩm chuyên sâu cho da khô, viêm da cơ địa, da nhạy cảm sau điều trị bằng thuốc bôi mạnh.",warning:"Dùng được cho trẻ sơ sinh và phụ nữ mang thai. Không phải thuốc điều trị, chỉ hỗ trợ chăm sóc da.",tags:["da","viêm da","chàm"]},
+  {id:278,name:"Tetracyclin 1% (mỡ tra mắt/da)",active:"Tetracycline (dạng mỡ)",type:"OTC",cat:"Da liễu & Vết thương",form:"Mỡ bôi",indication:"Mỡ kháng sinh điều trị nhiễm khuẩn da nhẹ, lẹo mắt, viêm kết mạc nhẹ.",warning:"Không dùng kéo dài quá 7 ngày. Nếu dùng cho mắt, rửa tay sạch trước khi tra để tránh nhiễm khuẩn thêm.",tags:["nhiễm trùng da","lẹo mắt","viêm kết mạc"]},
+  {id:279,name:"Silvirin (SSD Cream)",active:"Silver sulfadiazine 1%",type:"Rx",cat:"Da liễu & Vết thương",form:"Kem bôi",indication:"Phòng và điều trị nhiễm khuẩn vết bỏng, vết thương hở rộng.",warning:"Không dùng cho trẻ sơ sinh non tháng và phụ nữ mang thai gần ngày sinh. Thay băng và bôi lại theo chỉ định.",tags:["vết thương bẩn","nhiễm trùng da","sát trùng"]},
+  {id:280,name:"Hirudoid Cream",active:"Heparinoid",type:"OTC",cat:"Da liễu & Vết thương",form:"Kem bôi",indication:"Hỗ trợ tan vết bầm tím, giảm sưng viêm tĩnh mạch nông sau va đập, tiêm truyền.",warning:"Không bôi lên vết thương hở hoặc niêm mạc. Massage nhẹ vùng da bị bầm để tăng hiệu quả.",tags:["vết thương","suy tĩnh mạch"]},
+
+  // --- Mắt, Tai, Mũi họng (bổ sung) ---
+  {id:281,name:"Refresh Tears",active:"Nước mắt nhân tạo (Carmellose)",type:"OTC",cat:"Mắt, Tai, Mũi họng",form:"Nhỏ mắt",indication:"Bổ sung độ ẩm, giảm khô mắt, mỏi mắt do dùng máy tính hoặc đeo kính áp tròng lâu.",warning:"Có thể dùng cùng kính áp tròng mềm theo hướng dẫn. Không dùng chung lọ giữa nhiều người.",tags:["khô mắt","mỏi mắt"]},
+  {id:282,name:"Ofloxacin Nhỏ mắt 0.3%",active:"Ofloxacin",type:"Rx",cat:"Mắt, Tai, Mũi họng",form:"Nhỏ mắt",indication:"Điều trị viêm kết mạc, viêm giác mạc do nhiễm khuẩn nhạy cảm.",warning:"Không đeo kính áp tròng trong thời gian điều trị. Ngừng thuốc và đi khám nếu không cải thiện sau 2 ngày.",tags:["viêm kết mạc","nhiễm khuẩn mắt","đỏ mắt"]},
+  {id:283,name:"Nemydexan",active:"Neomycin + Dexamethasone",type:"Rx",cat:"Mắt, Tai, Mũi họng",form:"Nhỏ mắt",indication:"Điều trị viêm mắt có kèm dị ứng hoặc nguy cơ nhiễm khuẩn (viêm kết mạc dị ứng bội nhiễm).",warning:"Không dùng kéo dài vì corticoid có thể làm tăng nhãn áp hoặc che lấp nhiễm nấm/virus nguy hiểm.",tags:["viêm mắt","viêm kết mạc","dị ứng"]},
+  {id:284,name:"Otipax Nhỏ tai",active:"Lidocaine + Phenazone",type:"OTC",cat:"Mắt, Tai, Mũi họng",form:"Nhỏ tai",indication:"Giảm đau nhanh trong viêm tai giữa cấp xung huyết, đặc biệt ở trẻ em.",warning:"Chỉ dùng khi màng nhĩ còn nguyên vẹn (không thủng). Làm ấm lọ thuốc trong tay trước khi nhỏ để tránh chóng mặt.",tags:["đau tai","viêm tai"]},
+  {id:285,name:"Rhinex 0.05% (trẻ em)",active:"Xylometazoline 0.05%",type:"OTC",cat:"Mắt, Tai, Mũi họng",form:"Nhỏ/xịt mũi",indication:"Xịt/nhỏ mũi giảm nghẹt mũi cho trẻ em do cảm lạnh, viêm mũi.",warning:"Chỉ dùng nồng độ 0.05% cho trẻ trên 2 tuổi, không quá 3 ngày liên tục.",tags:["nghẹt mũi","sổ mũi","trẻ em"]},
+  {id:286,name:"Sterimar Xịt mũi",active:"Nước muối biển ưu trương",type:"OTC",cat:"Mắt, Tai, Mũi họng",form:"Xịt mũi",indication:"Vệ sinh mũi, giảm nghẹt mũi, hỗ trợ thông thoáng đường thở trong viêm mũi, viêm xoang.",warning:"An toàn cho trẻ sơ sinh và phụ nữ mang thai. Không phải thuốc điều trị đặc hiệu, chỉ hỗ trợ làm sạch.",tags:["nghẹt mũi","sổ mũi","viêm xoang"]},
+  {id:287,name:"Earex Nhỏ tai",active:"Dầu Arachis + Chlorbutol",type:"OTC",cat:"Mắt, Tai, Mũi họng",form:"Nhỏ tai",indication:"Làm mềm và hỗ trợ lấy nút sáp tai gây ù tai, giảm thính lực tạm thời.",warning:"Không dùng khi nghi ngờ thủng màng nhĩ hoặc đang viêm tai cấp. Nhỏ và nằm nghiêng vài phút để thuốc ngấm.",tags:["ù tai","đau tai"]},
+
+  // --- Vitamin & Khoáng chất (bổ sung) ---
+  {id:288,name:"Vitamin B Complex C",active:"Vitamin B1, B2, B6, B12 + Vitamin C",type:"OTC",cat:"Vitamin & Khoáng chất",form:"Viên uống",indication:"Bổ sung tổng hợp vitamin nhóm B và C cho người ăn uống kém, mệt mỏi, stress.",warning:"Uống sau ăn để tránh kích ứng dạ dày. Nước tiểu có thể vàng hơn do vitamin B2.",tags:["thiếu vitamin","mệt mỏi","tăng đề kháng"]},
+  {id:289,name:"Omega 3-6-9",active:"Dầu cá + dầu hạt lanh + dầu hướng dương",type:"OTC",cat:"Vitamin & Khoáng chất",form:"Viên nang",indication:"Bổ sung acid béo thiết yếu hỗ trợ tim mạch, não bộ và sức khỏe làn da.",warning:"Người đang dùng thuốc chống đông máu cần hỏi ý kiến bác sĩ trước khi dùng liều cao.",tags:["tim mạch","mệt mỏi","da"]},
+  {id:290,name:"DHA Cho Bà Bầu",active:"DHA (Docosahexaenoic acid)",type:"OTC",cat:"Vitamin & Khoáng chất",form:"Viên nang",indication:"Hỗ trợ phát triển não bộ và thị giác thai nhi, dùng cho phụ nữ mang thai và cho con bú.",warning:"Chọn sản phẩm có nguồn gốc rõ ràng, hàm lượng thủy ngân thấp. Uống sau ăn để giảm cảm giác tanh.",tags:["mang thai","thiếu vitamin"]},
+  {id:291,name:"Kẹo ngậm Kẽm + Vitamin C",active:"Kẽm Gluconate + Vitamin C",type:"OTC",cat:"Vitamin & Khoáng chất",form:"Viên ngậm",indication:"Viên ngậm tăng đề kháng, hỗ trợ giảm thời gian cảm cúm, ho, đau họng nhẹ.",warning:"Không ngậm quá liều khuyến cáo trên bao bì vì kẽm liều cao kéo dài có thể gây thiếu đồng.",tags:["tăng đề kháng","cảm cúm","đau họng","thiếu kẽm"]},
+  {id:292,name:"PM Procare",active:"DHA/EPA + Acid folic + Vitamin & khoáng chất",type:"OTC",cat:"Vitamin & Khoáng chất",form:"Viên nang",indication:"Bổ sung dưỡng chất toàn diện cho phụ nữ chuẩn bị mang thai, mang thai và cho con bú.",warning:"Uống sau ăn để giảm buồn nôn (đặc biệt 3 tháng đầu thai kỳ). Không tự ý dùng liều gấp đôi.",tags:["mang thai","thiếu vitamin","thiếu sắt"]},
+  {id:293,name:"Calcium D3 Nycomed (sủi)",active:"Canxi carbonate + Vitamin D3",type:"OTC",cat:"Vitamin & Khoáng chất",form:"Viên sủi",indication:"Bổ sung canxi và vitamin D giúp xương chắc khỏe, hỗ trợ điều trị loãng xương, chuột rút do thiếu canxi.",warning:"Uống sau ăn, hòa tan hoàn toàn viên sủi. Không dùng cùng lúc với Sắt hoặc kháng sinh nhóm Tetracycline.",tags:["thiếu canxi","loãng xương","chuột rút"]},
+  {id:294,name:"Vitamin K1 (ống tiêm/uống)",active:"Phytomenadione",type:"Rx",cat:"Vitamin & Khoáng chất",form:"Ống tiêm / uống",indication:"Hỗ trợ đông máu ở người thiếu vitamin K, dùng dự phòng xuất huyết ở trẻ sơ sinh.",warning:"Chỉ dùng theo chỉ định của bác sĩ, đặc biệt ở người đang dùng thuốc chống đông (Warfarin) cần điều chỉnh liều.",tags:["chảy máu","thiếu vitamin"]},
+
+  // --- Nội tiết & Sinh sản (bổ sung) ---
+  {id:295,name:"Utrogestan 100mg",active:"Progesterone (đặt/uống)",type:"Rx",cat:"Nội tiết & Sinh sản",form:"Viên đặt / uống",indication:"Hỗ trợ dọa sảy thai do thiếu progesterone, hỗ trợ niêm mạc tử cung trong các phương pháp hỗ trợ sinh sản.",warning:"Dạng đặt âm đạo nên đặt sâu trước khi ngủ. Có thể gây buồn ngủ nếu dùng đường uống vào ban ngày.",tags:["dọa sảy thai","rối loạn kinh nguyệt"]},
+  {id:296,name:"Folvite 5mg",active:"Acid folic",type:"OTC",cat:"Nội tiết & Sinh sản",form:"Viên uống",indication:"Bổ sung acid folic phòng ngừa dị tật ống thần kinh thai nhi, hỗ trợ điều trị thiếu máu hồng cầu to.",warning:"Nên uống trước khi mang thai ít nhất 1 tháng và trong suốt 3 tháng đầu thai kỳ theo hướng dẫn.",tags:["mang thai","thiếu máu"]},
+  {id:297,name:"Mastodynon",active:"Thảo dược (Vitex agnus castus)",type:"OTC",cat:"Nội tiết & Sinh sản",form:"Viên uống / Giọt",indication:"Hỗ trợ giảm đau, căng tức ngực trước kỳ kinh, điều hòa rối loạn kinh nguyệt nhẹ.",warning:"Cần dùng liên tục vài tháng mới thấy hiệu quả rõ. Không dùng cho phụ nữ mang thai hoặc đang dùng thuốc nội tiết khác mà chưa hỏi ý kiến bác sĩ.",tags:["rối loạn kinh nguyệt","đau bụng kinh"]},
+  {id:298,name:"Yasmin",active:"Drospirenone + Ethinylestradiol",type:"OTC",cat:"Nội tiết & Sinh sản",form:"Viên uống",indication:"Thuốc tránh thai hàng ngày, hỗ trợ giảm mụn nội tiết và giảm triệu chứng tiền kinh nguyệt.",warning:"Uống đúng giờ mỗi ngày. Tăng nhẹ nguy cơ huyết khối, đặc biệt ở người hút thuốc trên 35 tuổi.",tags:["tránh thai","rối loạn kinh nguyệt"]},
+  {id:299,name:"Thyrozol 5mg",active:"Thiamazole",type:"Rx",cat:"Nội tiết & Sinh sản",form:"Viên uống",indication:"Điều trị cường giáp (bệnh Basedow, bướu giáp nhiễm độc).",warning:"Theo dõi công thức máu định kỳ vì nguy cơ hiếm gặp giảm bạch cầu hạt (sốt, viêm họng cần báo ngay bác sĩ).",tags:["cường giáp","tuyến giáp"]},
+  {id:300,name:"Cao Ích Mẫu",active:"Thảo dược (Ích mẫu, Hương phụ...)",type:"OTC",cat:"Nội tiết & Sinh sản",form:"Viên uống",indication:"Hỗ trợ điều hòa kinh nguyệt, giảm các triệu chứng tiền mãn kinh như bốc hỏa, mất ngủ, cáu gắt.",warning:"Phụ nữ mang thai không được dùng (có thể gây co bóp tử cung). Hiệu quả từ từ, cần dùng đủ liệu trình.",tags:["rối loạn kinh nguyệt","mất ngủ"]},
+];
+
+// ================================================================
+//  ĐỘ PHỔ BIẾN (dùng để chọn thuốc "quốc dân" khi có nhiều lựa chọn ngang nhau)
+//  Thang điểm 1-10, không có trong bảng = mặc định 4
+// ================================================================
+const POPULARITY = {
+  1:8, 2:7, 3:10, 4:6, 6:7, 9:7, 10:5,
+  18:8, 20:6, 21:8, 22:6, 27:9, 28:8, 29:6, 30:8, 31:6, 32:6, 33:5, 38:6,
+  40:8, 41:7, 42:7, 43:6, 44:5, 45:5,
+  47:8, 48:7, 49:8, 51:9, 52:6, 53:7, 55:6, 56:7, 58:6, 60:7, 62:6, 68:6, 69:6,
+  75:8, 82:7, 91:8, 92:7,
+  174:7, 186:6,
+  // --- thuốc bổ sung 201-300 ---
+  201:7, 205:7, 206:8, 216:6, 219:6,
+  220:7, 232:6,
+  246:6, 247:6, 251:6,
+  252:7, 258:6, 264:5,
+  276:6,
+  281:6, 286:6,
+  288:6, 292:7, 293:6, 296:6, 298:6
+};
+function popularityOf(id) { return POPULARITY[id] || 4; }
+
+// ================================================================
+//  BẢN ĐỒ TRIỆU CHỨNG -> NHÃN TAG TRONG TỦ THUỐC
+//  Mỗi nhóm là 1 "bệnh/triệu chứng" mà người dùng có thể nhập.
+//  keywords: các cách gõ thường gặp (đem so khớp với câu nhập của người dùng)
+//  tags: các nhãn trong MEDICINES.tags dùng để tìm thuốc phù hợp
+// ================================================================
+const SYMPTOM_MAP = [
+  {id:'fever',        label:'sốt',              keywords:['sốt cao','sốt nhẹ','bị sốt','sốt'],                         tags:['sốt','hạ sốt']},
+  {id:'headache',     label:'đau đầu',          keywords:['đau nửa đầu','nhức đầu','đau đầu'],                          tags:['đau đầu','nhức đầu','đau nửa đầu']},
+  {id:'cough',        label:'ho',               keywords:['ho có đờm','ho khan','ho'],                                  tags:['ho','ho khan','đờm']},
+  {id:'runny_nose',   label:'sổ mũi',           keywords:['chảy nước mũi','sổ mũi'],                                    tags:['sổ mũi']},
+  {id:'stuffy_nose',  label:'nghẹt mũi',        keywords:['ngạt mũi','nghẹt mũi'],                                      tags:['nghẹt mũi']},
+  {id:'sore_throat',  label:'đau họng',         keywords:['rát họng','viêm họng','đau họng'],                           tags:['đau họng','viêm họng','rát họng']},
+  {id:'flu',          label:'cảm cúm',          keywords:['cảm lạnh','cảm cúm','bị cảm'],                               tags:['cảm cúm']},
+  {id:'diarrhea',     label:'tiêu chảy',        keywords:['đi ngoài lỏng','đi ngoài','tiêu chảy'],                      tags:['tiêu chảy']},
+  {id:'constipation', label:'táo bón',          keywords:['táo bón'],                                                   tags:['táo bón']},
+  {id:'stomach_pain', label:'đau bụng / đau dạ dày', keywords:['đau bụng kinh','đau dạ dày','đau bụng'],               tags:['đau bụng','đau dạ dày','co thắt','đau quặn']},
+  {id:'nausea',       label:'buồn nôn / nôn',   keywords:['nôn mửa','buồn nôn','nôn'],                                  tags:['buồn nôn','nôn']},
+  {id:'bloating',     label:'đầy bụng, khó tiêu', keywords:['chướng bụng','đầy bụng','khó tiêu'],                       tags:['đầy bụng','khó tiêu','chướng hơi']},
+  {id:'heartburn',    label:'ợ chua, trào ngược', keywords:['ợ nóng','ợ chua','trào ngược'],                            tags:['ợ chua','trào ngược']},
+  {id:'allergy',      label:'dị ứng, mề đay',   keywords:['mẩn ngứa','mề đay','dị ứng'],                                tags:['dị ứng','mề đay']},
+  {id:'itchy_skin',   label:'ngứa da',          keywords:['côn trùng cắn','ngứa da','ngứa'],                            tags:['ngứa da','côn trùng cắn','ngứa']},
+  {id:'muscle_pain',  label:'đau cơ',           keywords:['đau nhức cơ','đau cơ'],                                      tags:['đau cơ']},
+  {id:'joint_pain',   label:'đau khớp',         keywords:['đau khớp gối','thoái hóa khớp','viêm khớp','đau khớp'],      tags:['đau khớp','viêm khớp','thoái hóa khớp','đau khớp gối']},
+  {id:'back_pain',    label:'đau lưng',         keywords:['đau lưng'],                                                  tags:['đau lưng','co cơ']},
+  {id:'fatigue',      label:'mệt mỏi, suy nhược', keywords:['kiệt sức','suy nhược','mệt mỏi'],                          tags:['mệt mỏi','suy nhược']},
+  {id:'ear_pain',     label:'đau tai, viêm tai', keywords:['viêm tai','đau tai'],                                       tags:['đau tai','viêm tai']},
+  {id:'breath',       label:'khó thở, hen suyễn', keywords:['hen suyễn','khó thở','hen'],                               tags:['khó thở','hen','COPD']},
+  {id:'toothache',    label:'đau răng',         keywords:['đau răng'],                                                  tags:['đau răng']},
+  {id:'infection',    label:'nhiễm khuẩn',      keywords:['viêm nhiễm','nhiễm khuẩn'],                                  tags:['nhiễm khuẩn']},
+  {id:'fungal',       label:'nấm da, hắc lào',  keywords:['nấm móng','hắc lào','nấm da'],                               tags:['nấm','nấm da','nấm móng']},
+  {id:'hemorrhoid',   label:'trĩ, nặng chân',   keywords:['nặng chân','trĩ'],                                           tags:['trĩ','nặng chân','suy tĩnh mạch']},
+  {id:'high_bp',      label:'tăng huyết áp',    keywords:['cao huyết áp','tăng huyết áp'],                              tags:['tăng huyết áp']},
+  {id:'diabetes',     label:'tiểu đường',       keywords:['đái tháo đường','tiểu đường'],                               tags:['tiểu đường','đái tháo đường']},
+  {id:'cramps',       label:'chuột rút',        keywords:['chuột rút'],                                                 tags:['chuột rút','thiếu magie']},
+  {id:'worms',        label:'giun sán',         keywords:['tẩy giun','giun sán','giun'],                                tags:['giun sán','tẩy giun']},
+  {id:'bad_breath',   label:'hôi miệng, viêm nướu', keywords:['viêm nướu','hôi miệng'],                                 tags:['hôi miệng','viêm nướu']},
+  {id:'vaginal',      label:'viêm âm đạo, ngứa vùng kín', keywords:['ngứa vùng kín','viêm âm đạo','nấm âm đạo'],        tags:['viêm âm đạo','nấm âm đạo','ngứa']},
+  {id:'anemia',       label:'thiếu máu, thiếu sắt', keywords:['thiếu sắt','thiếu máu'],                                 tags:['thiếu máu','thiếu sắt']},
+  {id:'cold_sores',   label:'mụn rộp, zona, thủy đậu', keywords:['thủy đậu','mụn rộp','zona'],                          tags:['herpes','thủy đậu','zona']},
+
+  // --- Nhóm bổ sung (đồng bộ với 100 thuốc mới 201-300) ---
+  {id:'insomnia',     label:'mất ngủ, khó ngủ', keywords:['khó ngủ','mất ngủ'],                                         tags:['mất ngủ','an thần']},
+  {id:'anxiety',      label:'lo âu, căng thẳng', keywords:['căng thẳng','hoảng sợ','lo âu'],                            tags:['lo âu','hoảng sợ','tâm thần']},
+  {id:'dizziness',    label:'chóng mặt, hoa mắt', keywords:['hoa mắt','chóng mặt'],                                     tags:['chóng mặt','tiền đình','ù tai','say tàu xe']},
+  {id:'memory',       label:'suy giảm trí nhớ, kém tập trung', keywords:['kém tập trung','suy giảm trí nhớ','hay quên'], tags:['suy giảm trí nhớ','suy giảm nhận thức','kém tập trung','đột quỵ']},
+  {id:'cholesterol',  label:'mỡ máu cao',       keywords:['cholesterol cao','mỡ máu cao','mỡ máu'],                     tags:['mỡ máu','cholesterol cao','triglyceride cao']},
+  {id:'liver',        label:'gan yếu, men gan cao', keywords:['men gan cao','gan yếu','viêm gan'],                      tags:['gan','men gan cao','viêm gan','xơ gan','gan nhiễm mỡ','sỏi mật']},
+  {id:'acne',         label:'mụn trứng cá',     keywords:['mụn trứng cá','mụn viêm','nổi mụn'],                         tags:['mụn trứng cá','mụn viêm','mụn đầu đen']},
+  {id:'skin_condition', label:'vảy nến, chàm, viêm da', keywords:['á sừng','vảy nến','chàm'],                           tags:['vảy nến','chàm','viêm da','á sừng']},
+  {id:'scar',         label:'sẹo, sẹo thâm',    keywords:['sẹo lồi','sẹo thâm','sẹo'],                                   tags:['sẹo','sẹo lồi','sẹo phì đại','sẹo thâm','sẹo phẫu thuật','sẹo mụn']},
+  {id:'mouth_ulcer',  label:'nhiệt miệng, loét miệng', keywords:['loét miệng','nhiệt miệng'],                           tags:['nhiệt miệng','loét miệng','viêm lợi','viêm nha chu']},
+  {id:'dry_eyes',     label:'khô mắt, mỏi mắt', keywords:['mỏi mắt','khô mắt'],                                         tags:['khô mắt','mỏi mắt','mắt mệt']},
+  {id:'osteoporosis', label:'loãng xương',      keywords:['loãng xương'],                                               tags:['loãng xương','gãy xương']},
+  {id:'gout',         label:'gút',              keywords:['gout','gút'],                                                tags:['gút','acid uric']},
+  {id:'hyperthyroid', label:'cường giáp',       keywords:['bướu giáp nhiễm độc','basedow','cường giáp'],                tags:['cường giáp']},
+  {id:'hypothyroid',  label:'suy giáp',         keywords:['suy giáp','tuyến giáp'],                                     tags:['suy giáp','tuyến giáp']},
+  {id:'pregnancy',    label:'bổ sung dinh dưỡng thai kỳ', keywords:['dinh dưỡng thai kỳ','bà bầu','mang thai'],         tags:['mang thai','dinh dưỡng thai kỳ','thiếu vitamin']},
+  {id:'menstrual',    label:'rối loạn kinh nguyệt, tiền mãn kinh', keywords:['tiền mãn kinh','rối loạn kinh nguyệt'],   tags:['rối loạn kinh nguyệt','tiền mãn kinh','tránh thai']},
+];
+
+// ================================================================
+//  TÁCH TRIỆU CHỨNG TỪ CÂU NHẬP CỦA NGƯỜI DÙNG
+//  - So khớp từ khóa dài -> ngắn để tránh trùng lặp nhóm
+//  - Mỗi nhóm (id) chỉ tính 1 lần, dù khớp nhiều từ khóa
+// ================================================================
+function tokenize(text) {
+  return text.toLowerCase().replace(/[^\p{L}\p{N}\s]/gu, ' ').split(/\s+/).filter(Boolean);
+}
+function containsPhrase(tokens, phrase) {
+  const ptoks = phrase.toLowerCase().split(/\s+/).filter(Boolean);
+  for(let i = 0; i <= tokens.length - ptoks.length; i++) {
+    let ok = true;
+    for(let j = 0; j < ptoks.length; j++) {
+      if(tokens[i+j] !== ptoks[j]) { ok = false; break; }
+    }
+    if(ok) return true;
+  }
+  return false;
+}
+function detectSymptoms(text) {
+  const lower = text.toLowerCase();
+  const tokens = tokenize(text);
+  const allKeywords = [];
+  SYMPTOM_MAP.forEach(group => group.keywords.forEach(kw => allKeywords.push({kw, group})));
+  allKeywords.sort((a,b) => b.kw.length - a.kw.length);
+
+  const matchedIds = new Set();
+  const result = [];
+  for(const {kw, group} of allKeywords) {
+    if(matchedIds.has(group.id)) continue;
+    if(containsPhrase(tokens, kw)) {
+      matchedIds.add(group.id);
+      let tags = [...group.tags];
+      // Trường hợp đặc biệt: "sốt cao" -> bổ sung gợi ý bù nước/điện giải (Oresol)
+      if(group.id === 'fever' && /sốt\s*(rất\s*)?cao/.test(lower)) {
+        tags.push('mất nước');
+      }
+      result.push({...group, tags, matchedKeyword: kw});
+    }
+  }
+  return result;
+}
+
+// ================================================================
+//  ENGINE GỢI Ý THUỐC TỪ TỦ THUỐC NỘI BỘ
+//  Thuật toán xếp ưu tiên:
+//   1) Thuốc phải có danh sách "tags" (loại không có tags bị loại)
+//   2) Phù hợp với càng nhiều triệu chứng còn lại càng được ưu tiên
+//   3) Độ phổ biến cao hơn ưu tiên hơn
+//   4) OTC (không kê đơn) ưu tiên hơn Rx khi vẫn ngang điểm
+//  Sau khi chọn 1 thuốc, các triệu chứng đã được thuốc đó "phủ" sẽ bị
+//  loại khỏi danh sách còn thiếu, rồi lặp lại quy trình cho đến khi
+//  hết triệu chứng hoặc không còn thuốc phù hợp.
+// ================================================================
+function isBetterCandidate(a, b) {
+  if(a.coverCount !== b.coverCount) return a.coverCount > b.coverCount;
+  if(a.popularity !== b.popularity) return a.popularity > b.popularity;
+  const aOtc = a.medicine.type === 'OTC' ? 1 : 0;
+  const bOtc = b.medicine.type === 'OTC' ? 1 : 0;
+  return aOtc > bOtc;
+}
+
+function recommendMedicines(symptoms) {
+  let remaining = symptoms.map(s => s.id);
+  const usedIds = new Set();
+  const recommendations = [];
+
+  while(remaining.length > 0) {
+    let best = null;
+    for(const med of MEDICINES) {
+      if(usedIds.has(med.id)) continue;
+      if(!med.tags || !med.tags.length) continue; // không có danh sách tags -> bỏ
+      const covered = [];
+      for(const symId of remaining) {
+        const sym = symptoms.find(s => s.id === symId);
+        if(sym.tags.some(t => med.tags.includes(t))) covered.push(symId);
+      }
+      if(covered.length === 0) continue;
+      const candidate = { medicine: med, covered, coverCount: covered.length, popularity: popularityOf(med.id) };
+      if(!best || isBetterCandidate(candidate, best)) best = candidate;
+    }
+    if(!best) break;
+    recommendations.push(best);
+    usedIds.add(best.medicine.id);
+    remaining = remaining.filter(id => !best.covered.includes(id));
+  }
+  return { recommendations, uncovered: remaining };
+}
+
+// Tìm các thuốc liên quan tới 1 nhóm triệu chứng (để hiển thị "các loại thuốc như...")
+function candidatesForSymptom(symptom, excludeIds = []) {
+  return MEDICINES
+    .filter(m => m.tags && m.tags.length && !excludeIds.includes(m.id) && symptom.tags.some(t => m.tags.includes(t)))
+    .sort((a,b) => popularityOf(b.id) - popularityOf(a.id) || (a.type==='OTC'?-1:1) - (b.type==='OTC'?-1:1));
+}
+
+// ================================================================
+//  RENDER 1 "THẺ THUỐC" — lấy nguyên khung như trong tủ thuốc
+// ================================================================
+function renderMedicineCard(med) {
+  const typeBadgeClass = med.type === 'OTC' ? 'badge-otc' : 'badge-rx';
+  const typeLabel = med.type === 'OTC' ? 'Không kê đơn (OTC)' : 'Kê đơn (Rx)';
+  return `
+    <div class="mt-3 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl overflow-hidden">
+      <div class="p-3 border-b border-slate-200 dark:border-slate-700">
+        <div class="flex items-center gap-2 mb-1 flex-wrap">
+          <span class="text-[10px] font-bold px-2 py-0.5 rounded-full border ${typeBadgeClass}">${typeLabel}</span>
+          <span class="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">${med.cat}</span>
+        </div>
+        <h4 class="font-bold text-sm text-slate-900 dark:text-white leading-tight">${med.name}</h4>
+        <p class="text-xs text-teal-600 dark:text-teal-400 mt-0.5 font-medium">${med.active}</p>
+      </div>
+      <div class="p-3 space-y-2">
+        <div>
+          <p class="text-[11px] font-bold text-slate-700 dark:text-slate-200 mb-1"><i class="fa-solid fa-stethoscope text-teal-500 mr-1"></i>Chỉ định</p>
+          <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed bg-teal-50 dark:bg-teal-950/20 p-2.5 rounded-lg border border-teal-100 dark:border-teal-900/30">${med.indication}</p>
+        </div>
+        <div>
+          <p class="text-[11px] font-bold text-slate-700 dark:text-slate-200 mb-1"><i class="fa-solid fa-circle-exclamation text-amber-500 mr-1"></i>Cảnh báo quan trọng</p>
+          <p class="text-xs text-slate-600 dark:text-slate-300 leading-relaxed bg-amber-50 dark:bg-amber-950/20 p-2.5 rounded-lg border border-amber-100 dark:border-amber-900/30">${med.warning}</p>
+        </div>
+      </div>
+    </div>`;
+}
+
+// ================================================================
+//  TẠO PHẢN HỒI TƯ VẤN DỰA TRÊN TỦ THUỐC
+// ================================================================
+function buildAdvice(message) {
+  const symptoms = detectSymptoms(message);
+
+  // Quá 5 bệnh / triệu chứng cùng lúc
+  if(symptoms.length > APP_CONFIG.MAX_SYMPTOMS) {
+    return `<div class="text-rose-500 font-medium">Hệ thống chỉ có thể xử lý tối đa ${APP_CONFIG.MAX_SYMPTOMS} bệnh 1 lần, xin quý khách thông cảm!</div>`;
+  }
+
+  // Không nhận diện được triệu chứng nào trong tủ thuốc
+  if(symptoms.length === 0) {
+    const q = message.toLowerCase().trim();
+    const found = MEDICINES.filter(m =>
+      m.name.toLowerCase().includes(q) ||
+      m.active.toLowerCase().includes(q) ||
+      m.indication.toLowerCase().includes(q) ||
+      (m.tags && m.tags.some(t => t.toLowerCase().includes(q)))
+    ).slice(0,3);
+    if(found.length) {
+      let html = `Hệ thống tìm thấy trong tủ thuốc các loại có liên quan đến "<strong>${escapeHtml(message)}</strong>":`;
+      found.forEach(m => html += renderMedicineCard(m));
+      return html;
+    }
+    return `Hệ thống chưa nhận diện được triệu chứng cụ thể trong câu của bạn. Hãy mô tả rõ hơn, ví dụ: <em>"tôi bị sốt, ho và sổ mũi"</em> (tối đa ${APP_CONFIG.MAX_SYMPTOMS} triệu chứng/lần).`;
+  }
+
+  const symptomLabels = symptoms.map(s => s.label).join(', ');
+  const { recommendations, uncovered } = recommendMedicines(symptoms);
+
+  if(!recommendations.length) {
+    return `Theo như tình trạng <strong>${symptomLabels}</strong> của bạn, hiện tủ thuốc chưa có dữ liệu loại thuốc phù hợp tương ứng. Bạn nên hỏi trực tiếp dược sĩ tại nhà thuốc gần nhất.`;
+  }
+
+  // Danh sách "các loại thuốc như..." gom từ tất cả triệu chứng đã nhập
+  const allCandidates = [];
+  const seen = new Set();
+  symptoms.forEach(sym => {
+    candidatesForSymptom(sym).forEach(m => {
+      if(!seen.has(m.id)) { seen.add(m.id); allCandidates.push(m); }
+    });
+  });
+  const candidateNames = allCandidates.slice(0,6).map(m => m.name).join(', ');
+
+  const first = recommendations[0];
+  let html = `Theo như tình trạng <strong>${symptomLabels}</strong> của bạn, nó có thể đi kèm nhiều triệu chứng khác nhau. `
+    + `Các loại thuốc như ${candidateNames} sẽ phù hợp với bạn. Với thông tin bạn cung cấp, đây là loại phù hợp nhất hiện tại: <strong>${first.medicine.name}</strong>.`;
+  html += renderMedicineCard(first.medicine);
+
+  // Nếu 1 thuốc chưa đủ phủ hết các triệu chứng -> gợi ý thêm
+  for(let i = 1; i < recommendations.length; i++) {
+    const rec = recommendations[i];
+    const justCoveredLabels = rec.covered.map(id => symptoms.find(s=>s.id===id).label).join(', ');
+    html += `<div class="mt-3 text-sm">Để bổ sung công dụng cho triệu chứng <strong>${justCoveredLabels}</strong>, có thể dùng thêm: <strong>${rec.medicine.name}</strong>.</div>`;
+    html += renderMedicineCard(rec.medicine);
+  }
+
+  if(uncovered.length) {
+    const stillMissing = uncovered.map(id => symptoms.find(s=>s.id===id).label).join(', ');
+    html += `<div class="mt-3 text-xs text-amber-500">⚠ Tủ thuốc hiện chưa có lựa chọn riêng cho: ${stillMissing}. Vui lòng hỏi thêm dược sĩ.</div>`;
+  }
+
+  return html;
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ================================================================
+//  STATE
+// ================================================================
+const state = {
+  query: '',
+  cat: '',
+  type: '',
+  activeChip: null,
+  currentTab: 'lookup'
+};
+
+// ================================================================
+//  ROUTING
+// ================================================================
+function showHome() {
+  document.getElementById('page-home').style.display = 'block';
+  document.getElementById('page-search').style.display = 'none';
+}
+
+function showSearch(tab) {
+  document.getElementById('page-home').style.display = 'none';
+  document.getElementById('page-search').style.display = 'flex';
+  switchTab(tab || 'lookup');
+}
+
+// ================================================================
+//  TAB SWITCHING
+// ================================================================
+function switchTab(tab) {
+  state.currentTab = tab;
+  const tabs = ['lookup','chat','pharmacy'];
+  tabs.forEach(t => {
+    const btn = document.getElementById('tab-'+t);
+    const view = document.getElementById('view-'+t);
+    if(btn) {
+      btn.className = 'flex items-center gap-2 px-4 py-2.5 rounded-t-lg font-semibold text-xs border-b-2 whitespace-nowrap transition ' +
+        (t === tab ? 'border-teal-500 text-teal-600 dark:text-teal-400' : 'border-transparent text-slate-500 dark:text-slate-400 hover:text-teal-600 dark:hover:text-teal-400');
+    }
+    if(view) view.style.display = (t === tab) ? 'flex' : 'none';
+  });
+}
+
+// ================================================================
+//  RENDER CATEGORIES
+// ================================================================
+function renderCatFilter() {
+  const cats = [...new Set(MEDICINES.map(m=>m.cat))].sort();
+  const container = document.getElementById('cat-filter');
+  cats.forEach(c => {
+    const label = document.createElement('label');
+    label.className = 'radio-item';
+    label.innerHTML = `<input type="radio" name="cat" value="${c}"> <span class="text-slate-700 dark:text-slate-300 text-xs truncate" title="${c}">${c}</span>`;
+    container.appendChild(label);
+  });
+}
+
+// ================================================================
+//  FILTERING
+// ================================================================
+function getFiltered() {
+  const q = state.query.toLowerCase().trim();
+  return MEDICINES.filter(m => {
+    const matchCat = !state.cat || m.cat === state.cat;
+    const matchType = !state.type || m.type === state.type;
+    const matchQ = !q || 
+      m.name.toLowerCase().includes(q) ||
+      m.active.toLowerCase().includes(q) ||
+      m.indication.toLowerCase().includes(q) ||
+      m.warning.toLowerCase().includes(q) ||
+      (m.tags && m.tags.some(t => t.toLowerCase().includes(q)));
+    return matchCat && matchType && matchQ;
+  });
+}
+
+// ================================================================
+//  RENDER CARDS
+// ================================================================
+function renderCards() {
+  const results = getFiltered();
+  const grid = document.getElementById('results-grid');
+  const info = document.getElementById('result-info');
+  info.textContent = `${results.length} kết quả trong database`;
+  grid.innerHTML = '';
+  if(results.length === 0) {
+    grid.innerHTML = `<div class="col-span-full flex flex-col items-center justify-center py-16 text-slate-400">
+      <i class="fa-solid fa-magnifying-glass text-4xl mb-3 opacity-40"></i>
+      <p class="text-sm font-medium">Không tìm thấy thuốc phù hợp</p>
+      <p class="text-xs mt-1">Thử từ khóa khác hoặc xóa bộ lọc</p>
+    </div>`;
+    return;
+  }
+  results.forEach(m => {
+    const card = document.createElement('div');
+    card.className = 'card-hover bg-white dark:bg-slate-700/40 border border-slate-200 dark:border-slate-600 rounded-xl p-4 cursor-pointer fade-up select-none';
+    card.onclick = () => openDetail(m.id);
+    const badgeClass = m.type === 'OTC' ? 'badge-otc' : 'badge-rx';
+    card.innerHTML = `
+      <div class="flex items-start justify-between gap-2 mb-2">
+        <span class="${badgeClass} text-[11px] font-bold px-2 py-0.5 rounded-full shrink-0">${m.type}</span>
+        <span class="text-[10px] text-slate-400 dark:text-slate-500 text-right leading-tight">${m.form}</span>
+      </div>
+      <h3 class="font-bold text-sm text-slate-900 dark:text-white leading-tight mb-0.5">${m.name}</h3>
+      <p class="text-[11px] text-teal-600 dark:text-teal-400 font-medium mb-2 leading-tight">${m.active}</p>
+      <p class="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed line-clamp-2">${m.indication}</p>
+      <div class="mt-2.5 flex items-center justify-between">
+        <span class="text-[10px] bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400 px-2 py-0.5 rounded-full">${m.cat}</span>
+        <span class="text-[10px] text-teal-600 dark:text-teal-400 flex items-center gap-1">Chi tiết <i class="fa-solid fa-chevron-right text-[8px]"></i></span>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
+// ================================================================
+//  DETAIL MODAL
+// ================================================================
+function openDetail(id) {
+  const m = MEDICINES.find(x => x.id === id);
+  if(!m) return;
+  document.getElementById('d-name').textContent = m.name;
+  document.getElementById('d-active').textContent = m.active;
+  document.getElementById('d-indication').textContent = m.indication;
+  document.getElementById('d-warning').textContent = m.warning;
+  const typeBadge = document.getElementById('d-type-badge');
+  typeBadge.textContent = m.type === 'OTC' ? 'OTC — Không kê đơn' : 'Rx — Cần kê đơn bác sĩ';
+  typeBadge.className = `text-[11px] font-bold px-2 py-0.5 rounded-full border ${m.type === 'OTC' ? 'badge-otc' : 'badge-rx'}`;
+  document.getElementById('d-cat-badge').textContent = m.cat;
+  document.getElementById('detail-modal').style.display = 'flex';
+}
+
+function closeDetail() {
+  document.getElementById('detail-modal').style.display = 'none';
+}
+
+// Click outside to close
+document.getElementById('detail-modal').addEventListener('click', function(e) {
+  if(e.target === this) closeDetail();
+});
+
+// ================================================================
+//  QUICK CHIPS
+// ================================================================
+function quickSearch(btn, keyword) {
+  document.querySelectorAll('#chips-area .chip').forEach(c => c.classList.remove('chip-active'));
+  if(keyword) btn.classList.add('chip-active');
+  state.query = keyword;
+  const searchInput = document.getElementById('search-input');
+  if(searchInput) searchInput.value = keyword;
+  const searchInputMobile = document.getElementById('search-input-mobile');
+  if(searchInputMobile) searchInputMobile.value = keyword;
+  renderCards();
+}
+
+// ================================================================
+//  SEARCH INPUT
+// ================================================================
+function setupSearch() {
+  const handleInput = (e) => {
+    state.query = e.target.value;
+    // sync both inputs
+    document.getElementById('search-input').value = state.query;
+    document.getElementById('search-input-mobile').value = state.query;
+    document.querySelectorAll('#chips-area .chip').forEach(c => c.classList.remove('chip-active'));
+    renderCards();
+  };
+  document.getElementById('search-input').addEventListener('input', handleInput);
+  document.getElementById('search-input-mobile').addEventListener('input', handleInput);
+}
+
+// ================================================================
+//  RADIO FILTERS
+// ================================================================
+function setupFilters() {
+  document.getElementById('cat-filter').addEventListener('change', e => {
+    if(e.target.name === 'cat') {
+      state.cat = e.target.value;
+      renderCards();
+    }
+  });
+  document.getElementById('type-filter').addEventListener('change', e => {
+    if(e.target.name === 'rtype') {
+      state.type = e.target.value;
+      renderCards();
+    }
+  });
+}
+
+// ================================================================
+//  TOAST
+// ================================================================
+function toast(msg, type = 'info') {
+  const container = document.getElementById('toast-area');
+  const el = document.createElement('div');
+  const colors = {success:'bg-emerald-600',error:'bg-rose-600',info:'bg-slate-800 dark:bg-slate-700'};
+  const icons = {success:'fa-circle-check',error:'fa-circle-exclamation',info:'fa-circle-info'};
+  el.className = `flex items-center gap-2 px-4 py-2.5 rounded-xl shadow-xl text-xs font-medium text-white pointer-events-auto transition-all duration-300 translate-y-2 opacity-0 ${colors[type]||colors.info}`;
+  el.innerHTML = `<i class="fa-solid ${icons[type]||icons.info}"></i> ${msg}`;
+  container.appendChild(el);
+  setTimeout(() => el.classList.remove('translate-y-2','opacity-0'), 10);
+  setTimeout(() => {
+    el.classList.add('opacity-0','translate-y-[-8px]');
+    setTimeout(() => el.remove(), 300);
+  }, 3500);
+}
+
+// ================================================================
+//  AI CHAT (Gemini)
+// ================================================================
+function addMessage(role, text) {
+  const feed = document.getElementById('chat-feed');
+  const isAI = role === 'assistant';
+  const div = document.createElement('div');
+  div.className = `flex gap-3 ${isAI ? 'max-w-[88%]' : 'max-w-[88%] ml-auto flex-row-reverse'}`;
+  const avatarClass = isAI ? 'bg-teal-600' : 'bg-slate-500 dark:bg-slate-600';
+  const iconEl = isAI ? '<i class="fa-solid fa-robot text-xs"></i>' : '<i class="fa-solid fa-user text-xs"></i>';
+  const bubbleClass = isAI 
+    ? 'bg-slate-100 dark:bg-slate-700 rounded-2xl rounded-tl-none' 
+    : 'bg-teal-600 text-white rounded-2xl rounded-tr-none';
+  div.innerHTML = `
+    <div class="w-8 h-8 rounded-full ${avatarClass} text-white flex items-center justify-center text-sm shrink-0 shadow">${iconEl}</div>
+    <div>
+      <div class="${bubbleClass} p-3.5 text-sm leading-relaxed">${text}</div>
+      <span class="text-[10px] text-slate-400 px-1 mt-1 block ${isAI ? '' : 'text-right'}">${isAI ? 'PharmDoc AI' : 'Bạn'}</span>
+    </div>`;
+  feed.appendChild(div);
+  feed.scrollTop = feed.scrollHeight;
+}
+
+async function sendChat(message) {
+  if(!message.trim()) return;
+  addMessage('user', message);
+
+  const typingEl = document.getElementById('chat-typing');
+  typingEl.style.display = 'flex';
+
+  // Check emergency
+  if(APP_CONFIG.EMERGENCY_KEYWORDS.some(kw => message.toLowerCase().includes(kw))) {
+    typingEl.style.display = 'none';
+    addMessage('assistant', '⚠️ Đây có vẻ là tình huống <strong>khẩn cấp</strong>. Vui lòng <strong>gọi ngay 115</strong> hoặc đến cơ sở y tế gần nhất ngay lập tức!');
+    return;
+  }
+
+  // Giả lập thời gian xử lý để có cảm giác "đang soạn phản hồi"
+  setTimeout(() => {
+    typingEl.style.display = 'none';
+    try {
+      const html = buildAdvice(message);
+      addMessage('assistant', html);
+    } catch(e) {
+      addMessage('assistant', '⚠️ Có lỗi khi xử lý yêu cầu. Vui lòng thử lại với cách diễn đạt khác.');
+    }
+  }, 400);
+}
+
+function setupChat() {
+  const input = document.getElementById('chat-input');
+  const btn = document.getElementById('chat-send');
+  const send = () => {
+    const msg = input.value.trim();
+    if(!msg) return;
+    input.value = '';
+    sendChat(msg);
+  };
+  btn.addEventListener('click', send);
+  input.addEventListener('keydown', e => { if(e.key==='Enter' && !e.shiftKey) { e.preventDefault(); send(); } });
+}
+
+// ================================================================
+//  PHARMACY FINDER
+//  (Đã chuyển sang dùng link Google Maps trực tiếp ở nút #btn-gps,
+//   không cần gọi API định vị/Nominatim nữa)
+// ================================================================
+
+// ================================================================
+//  THEME
+// ================================================================
+function toggleTheme() {
+  const isDark = document.documentElement.classList.toggle('dark');
+  try { localStorage.setItem(APP_CONFIG.themeKey, isDark ? 'dark' : 'light'); } catch(e){}
+}
+
+function initTheme() {
+  try {
+    const saved = localStorage.getItem(APP_CONFIG.themeKey);
+    if(saved === 'light') {
+      document.documentElement.classList.remove('dark');
+    } else {
+      document.documentElement.classList.add('dark');
+    }
+  } catch(e) {}
+}
+
+// ================================================================
+//  DISCLAIMER
+// ================================================================
+function initDisclaimer() {
+  const modal = document.getElementById('modal-disclaimer');
+  try {
+    if(localStorage.getItem(APP_CONFIG.disclaimerKey) === 'true') {
+      modal.style.display = 'none';
+    }
+  } catch(e) {}
+  document.getElementById('btn-accept').addEventListener('click', () => {
+    modal.style.display = 'none';
+    try { localStorage.setItem(APP_CONFIG.disclaimerKey, 'true'); } catch(e){}
+  });
+}
+
+// ================================================================
+//  INIT
+// ================================================================
+document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
+  initDisclaimer();
+  renderCatFilter();
+  renderCards();
+  setupSearch();
+  setupFilters();
+  setupChat();
+  // Home page default
+  showHome();
+});
+</script>
+</body>
+</html>
