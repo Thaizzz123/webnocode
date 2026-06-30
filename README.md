@@ -43,18 +43,12 @@ PharmDoc/
 
 ### symptom-engine.js
 
-Đây là thành phần quan trọng nhất của dự án.
+Đây là thành phần cốt lõi của PharmDoc.
 
-Thay vì chỉ tìm kiếm theo từ khóa, PharmDoc sử dụng thuật toán tự xây dựng để lựa chọn những thuốc phù hợp nhất với các triệu chứng mà người dùng nhập.
+Module này chịu trách nhiệm phân tích các triệu chứng mà người dùng nhập và đưa ra danh sách thuốc phù hợp từ cơ sở dữ liệu của hệ thống. Toàn bộ quá trình gợi ý được thực hiện bằng thuật toán do nhóm tự xây dựng, không sử dụng API hay dịch vụ AI bên ngoài.
 
-Thuật toán hoạt động theo nguyên tắc:
+Thiết kế này giúp hệ thống hoạt động nhanh, ổn định và có thể kiểm soát hoàn toàn quá trình đưa ra kết quả gợi ý.
 
-* Ưu tiên thuốc điều trị được nhiều triệu chứng cùng lúc.
-* Nếu nhiều thuốc có hiệu quả tương đương, ưu tiên thuốc phổ biến hơn.
-* Nếu vẫn còn bằng nhau, ưu tiên thuốc không kê đơn (OTC) trước thuốc kê đơn (Rx).
-* Tiếp tục lặp lại quá trình cho đến khi tất cả triệu chứng được bao phủ hoặc không còn thuốc phù hợp.
-
-Nhờ đó, kết quả gợi ý vừa hợp lý, vừa dễ hiểu và không phụ thuộc vào bất kỳ dịch vụ AI hay API bên ngoài nào.
 
 ### render.js và interactions.js
 
