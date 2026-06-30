@@ -18,9 +18,7 @@ PharmDoc/
     │   nhóm điều trị, triệu chứng hỗ trợ và độ phổ biến.
     │
     ├── symptom-engine.js
-    │   "Bộ não" của PharmDoc.
-    │   Tự xây dựng thuật toán gợi ý thuốc dựa trên triệu chứng người dùng nhập,
-    │   hoàn toàn không sử dụng API hay AI bên ngoài.
+    │   Tự xây dựng thuật toán gợi ý thuốc dựa trên triệu chứng người dùng nhập.
     │
     ├── render.js
     │   Chịu trách nhiệm hiển thị dữ liệu lên giao diện:
