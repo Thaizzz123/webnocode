@@ -62,7 +62,6 @@ Hai module này đảm nhiệm toàn bộ phần trải nghiệm người dùng.
 * Dark Mode.
 * Disclaimer.
 
-Đây cũng là phần dễ quan sát nhất khi trình diễn sản phẩm.
 
 ### config.js và app-init.js
 
