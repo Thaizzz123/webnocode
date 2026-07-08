@@ -37,14 +37,32 @@ function setupFilters() {
     if(e.target.name === 'cat') {
       state.cat = e.target.value;
       renderCards();
+      if(window.innerWidth < 1024) closeMobileFilters();
     }
   });
   document.getElementById('type-filter').addEventListener('change', e => {
     if(e.target.name === 'rtype') {
       state.type = e.target.value;
       renderCards();
+      if(window.innerWidth < 1024) closeMobileFilters();
     }
   });
+}
+
+// ================================================================
+//  MOBILE FILTER DRAWER
+// ================================================================
+function openMobileFilters() {
+  const aside = document.getElementById('filter-sidebar');
+  if(!aside) return;
+  aside.classList.add('mobile-filter-open');
+  document.body.style.overflow = 'hidden';
+}
+function closeMobileFilters() {
+  const aside = document.getElementById('filter-sidebar');
+  if(!aside) return;
+  aside.classList.remove('mobile-filter-open');
+  document.body.style.overflow = '';
 }
 
 // ================================================================
@@ -82,7 +100,7 @@ function addMessage(role, text) {
     <div class="w-8 h-8 rounded-full ${avatarClass} text-white flex items-center justify-center text-sm shrink-0 shadow">${iconEl}</div>
     <div>
       <div class="${bubbleClass} p-3.5 text-sm leading-relaxed">${text}</div>
-      <span class="text-[10px] text-slate-400 px-1 mt-1 block ${isAI ? '' : 'text-right'}">${isAI ? 'PharmDoc AI' : 'Bạn'}</span>
+      <span class="text-[10px] text-slate-400 px-1 mt-1 block ${isAI ? '' : 'text-right'}">${isAI ? 'PharmDoc Chatbot' : 'Bạn'}</span>
     </div>`;
   feed.appendChild(div);
   feed.scrollTop = feed.scrollHeight;
@@ -90,7 +108,7 @@ function addMessage(role, text) {
 
 async function sendChat(message) {
   if(!message.trim()) return;
-  addMessage('user', message);
+  addMessage('user', escapeHtml(message));
 
   const typingEl = document.getElementById('chat-typing');
   typingEl.style.display = 'flex';

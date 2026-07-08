@@ -4,26 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>PharmDoc — Tra cứu thuốc thông minh</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-tailwind.config = {
-  darkMode: 'class',
-  theme: {
-    extend: {
-      fontFamily: { sans: ['Be Vietnam Pro', 'Inter', 'sans-serif'] },
-      colors: {
-        teal: { 50:'#f0fdfa',100:'#ccfbf1',200:'#99f6e4',300:'#5eead4',400:'#2dd4bf',500:'#14b8a6',600:'#0d9488',700:'#0f766e',800:'#115e59',900:'#134e4a',950:'#042f2e' }
-      }
-    }
-  }
-}
-</script>
-<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@300;400;500;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 <link rel="stylesheet" href="style.css">
 </head>
-<body class="bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
-
 <body class="bg-slate-50 text-slate-900 dark:bg-slate-900 dark:text-slate-100 min-h-screen flex flex-col">
 
 <!-- ============================  DISCLAIMER MODAL  ============================ -->
@@ -113,7 +95,7 @@ tailwind.config = {
   <!-- Hero -->
   <section class="max-w-screen-xl mx-auto px-4 pt-16 pb-12 text-center">
     <div class="inline-flex items-center gap-2 bg-teal-50 dark:bg-teal-950/40 text-teal-700 dark:text-teal-400 text-xs font-semibold px-3 py-1.5 rounded-full border border-teal-200 dark:border-teal-800 mb-6">
-      <i class="fa-solid fa-database text-[10px]"></i> hơn 300 loại thuốc phổ biến · Cập nhật 2026
+      <i class="fa-solid fa-database text-[10px]"></i> hơn 500 loại thuốc phổ biến · Cập nhật 2026
     </div>
     <h1 class="text-4xl sm:text-5xl font-extrabold leading-tight tracking-tight text-slate-900 dark:text-white mb-4">
       Tra cứu thuốc<br>
@@ -136,7 +118,7 @@ tailwind.config = {
   <section class="max-w-screen-xl mx-auto px-4 pb-14">
     <div class="grid grid-cols-3 gap-4 max-w-sm mx-auto">
       <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 text-center shadow-sm">
-        <div class="text-2xl font-extrabold text-teal-600 dark:text-teal-400">300+</div>
+        <div class="text-2xl font-extrabold text-teal-600 dark:text-teal-400">500+</div>
         <div class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-medium">Loại thuốc</div>
       </div>
       <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-4 text-center shadow-sm">
@@ -250,10 +232,18 @@ tailwind.config = {
   <div class="flex gap-4 flex-1 min-h-0">
 
     <!-- Sidebar -->
-    <aside class="w-56 shrink-0 flex flex-col gap-3 hidden lg:flex">
+    <aside id="filter-sidebar" class="w-56 shrink-0 flex flex-col gap-3 hidden lg:flex">
 
-      <!-- Search input -->
-      <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3">
+      <!-- Mobile-only header (chỉ hiện khi mở dạng overlay trên điện thoại) -->
+      <div class="flex items-center justify-between lg:hidden">
+        <h3 class="font-bold text-sm text-slate-800 dark:text-white">Bộ lọc</h3>
+        <button onclick="closeMobileFilters()" class="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-400" aria-label="Đóng bộ lọc">
+          <i class="fa-solid fa-xmark"></i>
+        </button>
+      </div>
+
+      <!-- Search input (chỉ hiện trên desktop, mobile đã có ô tìm riêng ở trên) -->
+      <div class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl p-3 hidden lg:block">
         <div class="relative">
           <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
           <input id="search-input" type="search" placeholder="Tên thuốc, hoạt chất..." autocomplete="off"
@@ -299,10 +289,16 @@ tailwind.config = {
 
         <!-- Mobile search bar -->
         <div class="p-3 border-b border-slate-100 dark:border-slate-700 lg:hidden shrink-0">
-          <div class="relative">
-            <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
-            <input id="search-input-mobile" type="search" placeholder="Nhập tên thuốc, hoạt chất..." autocomplete="off"
-              class="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-slate-900 dark:text-white transition">
+          <div class="flex gap-2">
+            <div class="relative flex-1">
+              <i class="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+              <input id="search-input-mobile" type="search" placeholder="Nhập tên thuốc, hoạt chất..." autocomplete="off"
+                class="w-full pl-8 pr-3 py-2 text-xs bg-slate-50 dark:bg-slate-700 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-teal-500 text-slate-900 dark:text-white transition">
+            </div>
+            <button onclick="openMobileFilters()" title="Bộ lọc" aria-label="Mở bộ lọc"
+              class="shrink-0 w-9 h-9 flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-600 text-slate-500 dark:text-slate-400 hover:border-teal-500 hover:text-teal-600 transition">
+              <i class="fa-solid fa-sliders"></i>
+            </button>
           </div>
         </div>
 
@@ -340,7 +336,7 @@ tailwind.config = {
               <div class="bg-slate-100 dark:bg-slate-700 p-3.5 rounded-2xl rounded-tl-none text-sm leading-relaxed">
                 Xin chào! Mình là trợ lý y tế cá nhân của bạn, hãy mô tả triệu chứng bạn đang gặp (tối đa 5 triệu chứng/lần), mình sẽ gợi ý loại thuốc phù hợp nhất.
               </div>
-              <span class="text-[10px] text-slate-400 px-1 mt-1 block">PharmDoc AI</span>
+              <span class="text-[10px] text-slate-400 px-1 mt-1 block">PharmDoc Chatbot</span>
             </div>
           </div>
         </div>

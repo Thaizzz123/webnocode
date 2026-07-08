@@ -5,6 +5,7 @@
 function showHome() {
   document.getElementById('page-home').style.display = 'block';
   document.getElementById('page-search').style.display = 'none';
+  if(typeof closeMobileFilters === 'function') closeMobileFilters();
 }
 
 function showSearch(tab) {
@@ -18,6 +19,7 @@ function showSearch(tab) {
 // ================================================================
 function switchTab(tab) {
   state.currentTab = tab;
+  if(typeof closeMobileFilters === 'function') closeMobileFilters();
   const tabs = ['lookup','chat','pharmacy'];
   tabs.forEach(t => {
     const btn = document.getElementById('tab-'+t);

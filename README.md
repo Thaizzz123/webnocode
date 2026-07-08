@@ -14,7 +14,7 @@ PharmDoc/
     │   Chứa các hằng số của hệ thống (APP_CONFIG) và trạng thái hiện tại của ứng dụng (state).
     │
     ├── data.js
-    │   Cơ sở dữ liệu gồm khoảng 300 loại thuốc, kèm thông tin phân loại OTC/Rx,
+    │   Cơ sở dữ liệu gồm khoảng 500 loại thuốc, kèm thông tin phân loại OTC/Rx,
     │   nhóm điều trị, triệu chứng hỗ trợ và độ phổ biến.
     │
     ├── symptom-engine.js
@@ -62,6 +62,7 @@ Hai module này đảm nhiệm toàn bộ phần trải nghiệm người dùng.
 * Dark Mode.
 * Disclaimer.
 
+Đây cũng là phần dễ quan sát nhất khi trình diễn sản phẩm.
 
 ### config.js và app-init.js
 
