@@ -6,12 +6,14 @@ function showHome() {
   document.getElementById('page-home').style.display = 'block';
   document.getElementById('page-search').style.display = 'none';
   if(typeof closeMobileFilters === 'function') closeMobileFilters();
+  window.scrollTo(0, 0);
 }
 
 function showSearch(tab) {
   document.getElementById('page-home').style.display = 'none';
   document.getElementById('page-search').style.display = 'flex';
   switchTab(tab || 'lookup');
+  window.scrollTo(0, 0);
 }
 
 // ================================================================
