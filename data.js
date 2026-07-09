@@ -598,6 +598,18 @@ const MEDICINES = [
 { id:498, name:"Bezafibrate 200mg", active:"Bezafibrate", type:"Rx", cat:"Mỡ máu & Cholesterol", form:"Viên uống", indication:"Tăng Triglyceride máu, rối loạn lipid máu hỗn hợp.", warning:"Theo dõi chức năng thận, gan định kỳ khi dùng dài ngày.", tags:["tăng triglyceride","mỡ máu cao"] },
 { id:499, name:"Policosanol 20mg", active:"Policosanol", type:"OTC", cat:"Mỡ máu & Cholesterol", form:"Viên uống", indication:"Hỗ trợ giảm Cholesterol xấu (LDL), tăng Cholesterol tốt (HDL).", warning:"Hiệu quả cần dùng đều đặn liên tục vài tuần đến vài tháng.", tags:["mỡ máu cao","cholesterol xấu"] },
 { id:500, name:"Rosuzet 10/10mg", active:"Rosuvastatin + Ezetimibe", type:"Rx", cat:"Mỡ máu & Cholesterol", form:"Viên uống", indication:"Rối loạn lipid máu chưa kiểm soát tốt với đơn trị liệu Statin.", warning:"Theo dõi men gan định kỳ. Báo bác sĩ nếu đau nhức cơ bất thường.", tags:["mỡ máu cao","cholesterol cao"] },
+
+// ================================================================
+//  BỔ SUNG 8 THUỐC (id 501-508) - nâng lên 508 thuốc, ưu tiên Giảm đau & Hạ sốt
+// ================================================================
+{id:501,name:"Cataflam 50mg",active:"Diclofenac potassium",type:"Rx",cat:"Giảm đau & Hạ sốt",form:"Viên uống",indication:"Giảm đau nhanh, hạ sốt: đau đầu, đau bụng kinh, đau răng, sốt cao.",warning:"Hấp thu nhanh hơn Diclofenac thường, uống sau ăn để giảm kích ứng dạ dày.",tags:["đau đầu","hạ sốt","sốt","đau bụng kinh"]},
+{id:502,name:"Indomethacin 25mg",active:"Indomethacin",type:"Rx",cat:"Giảm đau & Hạ sốt",form:"Viên uống",indication:"Đau đầu cụm (cluster headache), viêm khớp, gout cấp, hạ sốt trong một số trường hợp đặc biệt.",warning:"Uống sau ăn. Thận trọng ở người loét dạ dày, không dùng kéo dài không theo dõi.",tags:["đau đầu","viêm khớp","gout cấp"]},
+{id:503,name:"Ponstan 500mg",active:"Mefenamic acid",type:"Rx",cat:"Giảm đau & Hạ sốt",form:"Viên uống",indication:"Hạ sốt, giảm đau đầu, đau bụng kinh, đau răng mức độ nhẹ đến vừa.",warning:"Uống sau ăn. Không dùng quá 7 ngày liên tục nếu không có chỉ định bác sĩ.",tags:["sốt","đau đầu","đau bụng kinh","đau răng"]},
+{id:504,name:"Aceclofenac 100mg",active:"Aceclofenac",type:"Rx",cat:"Giảm đau & Hạ sốt",form:"Viên uống",indication:"Giảm đau đầu, đau khớp, đau răng, đau sau chấn thương mức độ vừa.",warning:"Uống sau ăn để giảm kích ứng dạ dày. Thận trọng ở người bệnh tim mạch.",tags:["đau đầu","đau khớp","đau răng"]},
+{id:505,name:"Mypara",active:"Paracetamol + Chlorzoxazone",type:"OTC",cat:"Giảm đau & Hạ sốt",form:"Viên uống",indication:"Hạ sốt, giảm đau đầu kèm co cứng cơ, đau mỏi vai gáy.",warning:"Có thể gây buồn ngủ nhẹ do thành phần giãn cơ. Không dùng cùng rượu bia.",tags:["sốt","đau đầu","đau cơ"]},
+{id:506,name:"Froben 100mg",active:"Flurbiprofen",type:"Rx",cat:"Giảm đau & Hạ sốt",form:"Viên uống",indication:"Giảm đau đầu, đau răng, đau họng, hạ sốt mức độ nhẹ đến vừa.",warning:"Uống sau ăn để giảm kích ứng dạ dày. Thận trọng ở người có tiền sử loét dạ dày.",tags:["đau đầu","đau răng","sốt"]},
+{id:507,name:"Nabumetone 500mg",active:"Nabumetone",type:"Rx",cat:"Giảm đau & Hạ sốt",form:"Viên uống",indication:"Giảm đau, kháng viêm trong viêm khớp, thoái hóa khớp mạn tính.",warning:"Uống cùng thức ăn. Thận trọng ở người bệnh thận, tim mạch khi dùng dài ngày.",tags:["đau khớp","viêm khớp"]},
+{id:508,name:"Xefo 8mg",active:"Lornoxicam",type:"Rx",cat:"Giảm đau & Hạ sốt",form:"Viên uống",indication:"Giảm đau đầu cấp tính, đau sau phẫu thuật, đau lưng cấp mức độ vừa đến nặng.",warning:"Uống sau ăn. Không dùng quá liều khuyến cáo, không phối hợp NSAID khác.",tags:["đau đầu","đau cấp tính","đau lưng"]},
 ];
 
 // ================================================================

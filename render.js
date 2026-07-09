@@ -30,6 +30,9 @@ function switchTab(tab) {
     }
     if(view) view.style.display = (t === tab) ? 'flex' : 'none';
   });
+  // Cột lọc (nhóm thuốc / OTC-Rx) chỉ hiện ở tab "Tra cứu thuốc"
+  const sidebar = document.getElementById('filter-sidebar');
+  if(sidebar) sidebar.style.display = (tab === 'lookup') ? '' : 'none';
 }
 
 // ================================================================
